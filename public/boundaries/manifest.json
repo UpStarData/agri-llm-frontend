@@ -1,0 +1,19 @@
+{
+  "version": "prototype-v0.8.1",
+  "source": "agri-llm-demo/data",
+  "status": "preview-only",
+  "coordinateNote": "按经度/纬度读取；原型坐标基准、许可和边界完整性需在正式上线前核实。",
+  "regionLevel": "中国文件只含省级边界；省区视角为聚焦省级面，不含市县边界。",
+  "files": [
+    {
+      "path": "world.geojson",
+      "features": 177,
+      "sourceSha256": "f1d0ad43857933f5474ca6bf811a778bb1a7b736ebf4c960e439dbba4c70bf97"
+    },
+    {
+      "path": "china.geojson",
+      "features": 35,
+      "sourceSha256": "02e474def2725db05247568511329ae67feb2cb53f72176e2180aa6565b53ffa"
+    }
+  ]
+}

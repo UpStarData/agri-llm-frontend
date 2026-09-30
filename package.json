@@ -1,0 +1,50 @@
+{
+  "name": "agri-llm-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "农业产业链数据大屏前端：React、deck.gl、GeoJSON 与 Less",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test && vite build",
+    "import:boundaries": "node scripts/import-boundaries.mjs"
+  },
+  "dependencies": {
+    "@ant-design/icons": "6.3.4",
+    "@deck.gl/core": "9.4.0",
+    "@deck.gl/layers": "9.4.0",
+    "@deck.gl/react": "9.4.0",
+    "@deck.gl/widgets": "9.4.0",
+    "@tanstack/react-query": "5.103.2",
+    "@vant/area-data": "^2.2.0",
+    "ahooks": "3.10.0",
+    "antd": "6.6.5",
+    "axios": "1.20.0",
+    "dayjs": "1.11.23",
+    "echarts": "6.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@types/geojson": "7946.0.16",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "less": "4.9.1",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "5.0.1"
+  }
+}
