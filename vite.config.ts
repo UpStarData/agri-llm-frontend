@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       proxy: {
         "/api": {
-          target: env.API_PROXY_TARGET || "http://192.168.1.221:8000",
+          target: env.API_PROXY_TARGET || "http://192.168.1.154:8000",
           changeOrigin: true,
         },
       },

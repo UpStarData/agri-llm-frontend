@@ -40,13 +40,30 @@ export interface Fact {
   entityIds: string[];
   sources: Source[];
 }
+export interface EvidenceFact {
+  factId: string;
+  title: string;
+  excerpt?: string;
+}
 export interface Entity {
   id: string;
   name: string;
   description?: string;
   type: string;
   position: Position | null;
+  viewLevels?: ("global" | "china" | "hunan")[];
   factIds: string[];
+  address?: string;
+  regionPath?: { code: string; name: string; level: string }[];
+  commodityIds?: string[];
+  attributes?: Record<string, string | number>;
+  relationCount?: number;
+  relations?: Relation[];
+  evidenceStatus?: string;
+  sourceType?: "fact" | "preset";
+  evidence?: EvidenceFact[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 export interface Relation {
   id: string;
@@ -55,27 +72,21 @@ export interface Relation {
   description?: string;
   type: string;
   factIds: string[];
-}
-// 装饰数据独立，不作为统计、详情和关系端点的输入。
-export interface VisualParticle {
-  id: string;
-  anchorFactId: string;
-  anchorId: string;
-  regionId: string;
-  position: Position;
-  generatorVersion: string;
-  boundaryVersion: string;
-}
-export interface QueryContext {
-  mode: Mode;
-  level: MapLevel;
-  regionId?: string;
-  time: { field: "eventTime"; from: string; to: string };
-  filters: { selectedIds: string[] };
-  statsScope: "region";
-}
-export interface MapQueryContext extends QueryContext {
-  overlays: MapOverlayType[];
+  displayLevels?: ("global" | "china" | "hunan")[];
+  supportFactCount?: number;
+  colorDomain?: string;
+  directed?: boolean;
+  involved_varieties?: string[];
+  scopeLayer?: "global" | "china" | "hunan";
+  evidenceStatus?: string;
+  sourceType?: "fact" | "preset";
+  evidence?: EvidenceFact[];
+  basis?: string;
+  attributes?: Record<string, string | number>;
+  source?: Pick<Entity, "id" | "name" | "type">;
+  target?: Pick<Entity, "id" | "name" | "type">;
+  createdAt?: string;
+  updatedAt?: string;
 }
 export interface MapMarker {
   id: string;
@@ -96,28 +107,4 @@ export interface MapData {
     influence?: InfluencePoint[];
   };
   truncated: boolean;
-}
-export interface StatsData {
-  datasetVersion: string;
-  factCount: number;
-  entityCount: number;
-  relationCount: number;
-  updatedAt: string;
-  trend: { date: string; count: number }[];
-}
-export interface NeighborhoodRequest {
-  rootEntityId: string;
-  depth: 1 | 2;
-  direction: "in" | "out" | "both";
-  maxNodes: number;
-  maxEdges: number;
-  context: QueryContext;
-  cursor?: string;
-}
-export interface NeighborhoodData {
-  datasetVersion: string;
-  nodes: Entity[];
-  edges: Relation[];
-  truncated: boolean;
-  nextCursor?: string;
 }

@@ -1,10 +1,19 @@
 import { create } from "zustand";
+import { readTheme, saveTheme } from "./utils/theme";
+import type { RelationContext } from "./api/relation";
 import dayjs, { DISPLAY_TIMEZONE } from "./utils/date";
-import type { ColorTheme, MapLevel, MapOverlayType, Mode, Selection } from "./types";
+import type {
+  ColorTheme,
+  MapLevel,
+  MapOverlayType,
+  Mode,
+  Selection,
+} from "./types";
 import type { GeoPointKind } from "./api/fact";
 
 type DrawerSide = "left" | "right" | "bottom";
-type MapControl = "globe" | "fullscreen" | "zoom" | "reset" | "influence" | "video" | "search";
+type MapControl =
+  "globe" | "graph" | "ports" | "fullscreen" | "zoom" | "reset" | "influence" | "video" | "search";
 
 interface IFactFilters {
   varieties: string[];
@@ -14,14 +23,45 @@ interface IFactFilters {
   videoOnly: boolean;
 }
 
+interface IModeState {
+  level: MapLevel;
+  regionId?: string;
+  selection: Selection | null;
+  detailsOpen: boolean;
+  detailStack: Selection[];
+  highlightedEntityId: string | null;
+  mapControlVisibility: Record<MapControl, boolean>;
+}
 interface DashboardState {
   mode: Mode;
+  modeStates: Record<Mode, IModeState>;
+  recordScroll: Record<Mode, number>;
+  setRecordScroll: (mode: Mode, top: number) => void;
+  detailStack: Selection[];
+  highlightedEntityId: string | null;
+  relationFilters: {
+    keyword: string;
+    excludedTypes: string[];
+    crossRegion: boolean;
+  };
+  relationContext: RelationContext | null;
+  relationRevision: number;
+  relationGlow: { entityIds: string[]; relationIds: string[]; until: number };
+  glowRelation: (entityIds: string[], relationIds: string[]) => void;
+  enterRelation: (context: RelationContext) => void;
+  exitRelationContext: () => void;
+  refreshRelationContext: () => void;
+  setRelationFilters: (
+    filters: Partial<DashboardState["relationFilters"]>,
+  ) => void;
+  setHighlightedEntity: (id: string | null) => void;
+  pushDetail: (selection: Selection) => void;
+  backDetail: () => void;
   level: MapLevel;
   regionId?: string;
   dateRange: [string, string];
   selection: Selection | null;
   detailsOpen: boolean;
-  aiOpen: boolean;
   colorTheme: ColorTheme;
   drawerOpen: Record<Mode, Record<DrawerSide, boolean>>;
   excludedFilterIds: Record<Mode, string[]>;
@@ -37,7 +77,6 @@ interface DashboardState {
   setDateRange: (range: [string, string]) => void;
   select: (selection: Selection | null) => void;
   setDetailsOpen: (open: boolean) => void;
-  setAiOpen: (open: boolean) => void;
   setColorTheme: (theme: ColorTheme) => void;
   setDrawerOpen: (mode: Mode, side: DrawerSide, open: boolean) => void;
   setExcludedFilterIds: (mode: Mode, ids: string[]) => void;
@@ -46,9 +85,112 @@ interface DashboardState {
   setMapControlVisibility: (control: MapControl, visible: boolean) => void;
   setAllMapControlVisibility: (visible: boolean) => void;
 }
+const controls = {
+  globe: true,
+  graph: true,
+  ports: true,
+  fullscreen: true,
+  zoom: true,
+  reset: true,
+  influence: true,
+  video: true,
+  search: true,
+};
+const modeState = (): IModeState => ({
+  level: "world",
+  regionId: undefined,
+  selection: null,
+  detailsOpen: false,
+  detailStack: [],
+  highlightedEntityId: null,
+  mapControlVisibility: { ...controls },
+});
+const captureMode = (s: DashboardState): IModeState => ({
+  level: s.level,
+  regionId: s.regionId,
+  selection: s.selection,
+  detailsOpen: s.detailsOpen,
+  detailStack: s.detailStack,
+  highlightedEntityId: s.highlightedEntityId,
+  mapControlVisibility: s.mapControlVisibility,
+});
 const today = dayjs().tz(DISPLAY_TIMEZONE);
 export const useDashboardStore = create<DashboardState>((set) => ({
   mode: "fact",
+  modeStates: { fact: modeState(), relation: modeState() },
+  recordScroll: { fact: 0, relation: 0 },
+  setRecordScroll: (mode, top) =>
+    set((s) => ({ recordScroll: { ...s.recordScroll, [mode]: top } })),
+  detailStack: [],
+  highlightedEntityId: null,
+  relationFilters: { keyword: "", excludedTypes: [], crossRegion: true },
+  relationContext: null,
+  relationRevision: 0,
+  relationGlow: { entityIds: [], relationIds: [], until: 0 },
+  glowRelation: (entityIds, relationIds) =>
+    set({ relationGlow: { entityIds, relationIds, until: Date.now() + 3000 } }),
+  enterRelation: (relationContext) =>
+    set((s) => ({
+      modeStates: { ...s.modeStates, [s.mode]: captureMode(s) },
+      ...s.modeStates.relation,
+      mode: "relation",
+      relationContext,
+      relationRevision:
+        s.relationRevision +
+        Number(
+          relationContext.factId !== s.relationContext?.factId ||
+            relationContext.rootEntityId !== s.relationContext?.rootEntityId,
+        ),
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    })),
+  exitRelationContext: () =>
+    set({
+      relationContext: null,
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    }),
+  refreshRelationContext: () =>
+    set((s) => ({
+      relationRevision: s.relationRevision + 1,
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    })),
+  setRelationFilters: (filters) =>
+    set((s) => ({
+      relationFilters: { ...s.relationFilters, ...filters },
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    })),
+  setHighlightedEntity: (highlightedEntityId) => set({ highlightedEntityId }),
+  pushDetail: (selection) =>
+    set((s) => ({
+      selection,
+      detailsOpen: true,
+      detailStack: [...s.detailStack, selection],
+      highlightedEntityId:
+        selection.kind === "entity" ? selection.id : s.highlightedEntityId,
+    })),
+  backDetail: () =>
+    set((s) => {
+      const detailStack = s.detailStack.slice(0, -1);
+      const selection = detailStack.at(-1) ?? null;
+      return {
+        detailStack,
+        selection,
+        detailsOpen: detailStack.length > 0,
+        highlightedEntityId:
+          selection?.kind === "entity" ? selection.id : s.highlightedEntityId,
+      };
+    }),
   level: "world",
   dateRange: [
     today.subtract(29, "day").format("YYYY-MM-DD"),
@@ -56,62 +198,164 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   ],
   selection: null,
   detailsOpen: false,
-  aiOpen: false,
-  colorTheme: "dark",
+  colorTheme: readTheme(),
   drawerOpen: {
-    fact: { left: true, right: true, bottom: true },
+    fact: { left: true, right: true, bottom: false },
     relation: { left: true, right: true, bottom: false },
   },
   excludedFilterIds: { fact: [], relation: [] },
   mapOverlayVisibility: { ports: false, factSources: false, influence: false },
   factGeoKinds: [],
-  mapControlVisibility: { globe: true, fullscreen: true, zoom: true, reset: true, influence: true, video: true, search: true },
-  factFilters: { varieties: [], countryId: "", provinceId: "", keyword: "", videoOnly: false },
-  setFactFilters: (filters) => set((state) => ({
-    factFilters: { ...state.factFilters, ...filters },
-    selection: null,
-    detailsOpen: false,
-  })),
-  setFactRegion: (countryId, provinceId = "") => set((state) => ({
-    factFilters: { ...state.factFilters, countryId, provinceId },
-    level: provinceId ? "province" : countryId ? "country" : "world",
-    regionId: provinceId || countryId || undefined,
-    selection: null,
-    detailsOpen: false,
-  })),
-  togglePanel: (side) => set((state) => ({
-    drawerOpen: {
-      ...state.drawerOpen,
-      [state.mode]: { ...state.drawerOpen[state.mode], [side]: !state.drawerOpen[state.mode][side] },
-    },
-  })),
-  setMode: (mode) => set({ mode }),
+  mapControlVisibility: {
+    globe: true,
+    graph: true,
+    ports: true,
+    fullscreen: true,
+    zoom: true,
+    reset: true,
+    influence: true,
+    video: true,
+    search: true,
+  },
+  factFilters: {
+    varieties: [],
+    countryId: "",
+    provinceId: "",
+    keyword: "",
+    videoOnly: false,
+  },
+  setFactFilters: (filters) =>
+    set((state) => {
+      const varietyChanged =
+        filters.varieties !== undefined &&
+        JSON.stringify(filters.varieties) !==
+          JSON.stringify(state.factFilters.varieties);
+      return {
+        factFilters: { ...state.factFilters, ...filters },
+        selection: null,
+        detailsOpen: false,
+        detailStack: [],
+        highlightedEntityId: null,
+        relationRevision: state.relationRevision + Number(varietyChanged),
+        recordScroll: varietyChanged
+          ? { fact: 0, relation: 0 }
+          : { ...state.recordScroll, fact: 0 },
+        modeStates: varietyChanged
+          ? {
+              fact: {
+                ...state.modeStates.fact,
+                selection: null,
+                detailsOpen: false,
+                detailStack: [],
+                highlightedEntityId: null,
+              },
+              relation: {
+                ...state.modeStates.relation,
+                selection: null,
+                detailsOpen: false,
+                detailStack: [],
+                highlightedEntityId: null,
+              },
+            }
+          : state.modeStates,
+      };
+    }),
+  setFactRegion: (countryId, provinceId = "") =>
+    set((state) => ({
+      factFilters: { ...state.factFilters, countryId, provinceId },
+      level: provinceId ? "province" : countryId ? "country" : "world",
+      regionId: provinceId || countryId || undefined,
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    })),
+  togglePanel: (side) =>
+    set((state) => ({
+      drawerOpen: {
+        ...state.drawerOpen,
+        [state.mode]: {
+          ...state.drawerOpen[state.mode],
+          [side]: !state.drawerOpen[state.mode][side],
+        },
+      },
+    })),
+  setMode: (mode) =>
+    set((s) =>
+      s.mode === mode
+        ? {}
+        : {
+            modeStates: { ...s.modeStates, [s.mode]: captureMode(s) },
+            ...s.modeStates[mode],
+            mode,
+          },
+    ),
   setRegion: (level, regionId) =>
-    set({ level, regionId, selection: null, detailsOpen: false }),
+    set({
+      level,
+      regionId,
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    }),
   setDateRange: (dateRange) =>
-    set({ dateRange, selection: null, detailsOpen: false }),
-  select: (selection) => set({ selection, detailsOpen: selection !== null }),
+    set({
+      dateRange,
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    }),
+  select: (selection) =>
+    set((s) => ({
+      selection,
+      detailsOpen: selection !== null,
+      detailStack: selection ? [selection] : [],
+      highlightedEntityId:
+        s.mode === "relation" && selection?.kind === "entity"
+          ? selection.id
+          : null,
+    })),
   setDetailsOpen: (detailsOpen) => set({ detailsOpen }),
-  setAiOpen: (aiOpen) => set({ aiOpen }),
-  setColorTheme: (colorTheme) => set({ colorTheme }),
-  setDrawerOpen: (mode, side, open) => set((state) => ({
-    drawerOpen: { ...state.drawerOpen, [mode]: { ...state.drawerOpen[mode], [side]: open } },
-  })),
-  setExcludedFilterIds: (mode, ids) => set((state) => ({
-    excludedFilterIds: { ...state.excludedFilterIds, [mode]: ids },
-    selection: null,
-    detailsOpen: false,
-  })),
-  setMapOverlayVisibility: (type, visible) => set((state) => ({
-    mapOverlayVisibility: { ...state.mapOverlayVisibility, [type]: visible },
-  })),
+  setColorTheme: (colorTheme) => {
+    saveTheme(colorTheme);
+    set({ colorTheme });
+  },
+  setDrawerOpen: (mode, side, open) =>
+    set((state) => ({
+      drawerOpen: {
+        ...state.drawerOpen,
+        [mode]: { ...state.drawerOpen[mode], [side]: open },
+      },
+    })),
+  setExcludedFilterIds: (mode, ids) =>
+    set((state) => ({
+      excludedFilterIds: { ...state.excludedFilterIds, [mode]: ids },
+      selection: null,
+      detailsOpen: false,
+      detailStack: [],
+      highlightedEntityId: null,
+    })),
+  setMapOverlayVisibility: (type, visible) =>
+    set((state) => ({
+      mapOverlayVisibility: { ...state.mapOverlayVisibility, [type]: visible },
+    })),
   setFactGeoKinds: (factGeoKinds) => set({ factGeoKinds }),
-  setMapControlVisibility: (control, visible) => set((state) => ({
-    mapControlVisibility: { ...state.mapControlVisibility, [control]: visible },
-  })),
-  setAllMapControlVisibility: (visible) => set((state) => ({
-    mapControlVisibility: Object.fromEntries(
-      Object.keys(state.mapControlVisibility).map((control) => [control, visible]),
-    ) as Record<MapControl, boolean>,
-  })),
+  setMapControlVisibility: (control, visible) =>
+    set((state) => ({
+      mapControlVisibility: {
+        ...state.mapControlVisibility,
+        [control]: visible,
+      },
+    })),
+  setAllMapControlVisibility: (visible) =>
+    set((state) => ({
+      mapControlVisibility: Object.fromEntries(
+        Object.keys(state.mapControlVisibility).map((control) => [
+          control,
+          visible,
+        ]),
+      ) as Record<MapControl, boolean>,
+    })),
 }));

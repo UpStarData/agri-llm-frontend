@@ -15,6 +15,16 @@ export const varietyCommodityIds: Record<string, string> = {
   "樱桃": "e:cmd:cherry",
   "辣椒": "e:cmd:chili",
 };
+export const commodityNameById = Object.fromEntries(
+  Object.entries(varietyCommodityIds).map(([name, id]) => [id, name]),
+) as Record<string, string>;
+
+export const evidenceStatusLabels: Record<string, string> = {
+  single_source: "单一来源",
+  multi_source: "多来源支持",
+  pending: "待补证",
+  conflict: "存在冲突",
+};
 
 export const provinceApiCode = (provinceId: string) => {
   const suffix = provinceSuffixes[provinceId.slice(0, 2)];

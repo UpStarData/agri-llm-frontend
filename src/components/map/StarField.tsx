@@ -25,7 +25,13 @@ function createStars(count: number): Star[] {
   }));
 }
 
-export default function StarField({ width, height }: { width: number; height: number }) {
+export default function StarField({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -40,16 +46,25 @@ export default function StarField({ width, height }: { width: number; height: nu
     canvas.height = Math.round(viewHeight * ratio);
     context.scale(ratio, ratio);
 
-    const stars = createStars(Math.max(70, Math.min(260, Math.round(viewWidth * viewHeight / 8500))));
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const stars = createStars(
+      Math.max(70, Math.min(260, Math.round((viewWidth * viewHeight) / 8500))),
+    );
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     let frame = 0;
     const draw = (time: number) => {
       context.clearRect(0, 0, viewWidth, viewHeight);
       const seconds = reduceMotion ? 0 : time / 1000;
       for (const star of stars) {
-        const x = ((star.x * viewWidth + seconds * star.speed) % viewWidth + viewWidth) % viewWidth;
+        const x =
+          (((star.x * viewWidth + seconds * star.speed) % viewWidth) +
+            viewWidth) %
+          viewWidth;
         const y = star.y * viewHeight;
-        const shimmer = reduceMotion ? 1 : 0.82 + 0.18 * Math.sin(seconds * 0.55 + star.phase);
+        const shimmer = reduceMotion
+          ? 1
+          : 0.82 + 0.18 * Math.sin(seconds * 0.55 + star.phase);
         context.beginPath();
         context.arc(x, y, star.radius, 0, Math.PI * 2);
         context.fillStyle = `rgba(190, 220, 233, ${star.opacity * shimmer})`;
@@ -61,5 +76,7 @@ export default function StarField({ width, height }: { width: number; height: nu
     return () => cancelAnimationFrame(frame);
   }, [width, height]);
 
-  return <canvas ref={canvasRef} className="map-starfield" aria-hidden="true" />;
+  return (
+    <canvas ref={canvasRef} className="map-starfield" aria-hidden="true" />
+  );
 }

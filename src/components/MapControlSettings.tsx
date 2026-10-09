@@ -11,16 +11,26 @@ const controlItems = [
   { key: "video", label: "视频" },
   { key: "search", label: "搜索" },
 ] as const;
+const relationControlItems = [
+  { key: "globe", label: "3D / 2D" },
+  { key: "graph", label: "图谱" },
+  { key: "zoom", label: "放大 / 缩小" },
+  { key: "fullscreen", label: "全屏" },
+  { key: "ports", label: "港口锚点" },
+  { key: "search", label: "搜索" },
+] as const;
 
 const MapControlSettings = () => {
-  const { visibility, setVisibility, setAllVisibility } = useDashboardStore(
+  const { mode, visibility, setVisibility, setAllVisibility } = useDashboardStore(
     useShallow((s) => ({
+      mode: s.mode,
       visibility: s.mapControlVisibility,
       setVisibility: s.setMapControlVisibility,
       setAllVisibility: s.setAllMapControlVisibility,
     })),
   );
-  const selectedCount = controlItems.filter(
+  const items = mode === "relation" ? relationControlItems : controlItems;
+  const selectedCount = items.filter(
     ({ key }) => visibility[key],
   ).length;
 
@@ -30,15 +40,15 @@ const MapControlSettings = () => {
         <div className="menu-section-title">地图快捷控制</div>
         <Checkbox
           aria-label="显示全部地图快捷控制"
-          checked={selectedCount === controlItems.length}
+          checked={selectedCount === items.length}
           indeterminate={
-            selectedCount > 0 && selectedCount < controlItems.length
+            selectedCount > 0 && selectedCount < items.length
           }
           onChange={(event) => setAllVisibility(event.target.checked)}
         />
       </div>
       <div className="map-control-options">
-        {controlItems.map(({ key, label }) => (
+        {items.map(({ key, label }) => (
           <Checkbox
             key={key}
             checked={visibility[key]}

@@ -2,11 +2,17 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import dayjs from 'dayjs'
 import { WebMercatorViewport } from '@deck.gl/core'
-import { createMapLayers, createParticleLayer } from '../src/utils/mapLayers'
+import { createRelationLayers as buildRelationLayers, prepareRelationPaths, createRelationFlowLayer } from "../src/utils/relationLayers"
+import { createMapLayers, createInfluenceLayers } from '../src/utils/mapLayers'
 import { useDashboardStore } from '../src/store'
 import { dateRangeToUtc } from '../src/utils/date'
 import { FLAT_WORLD_BOUNDS, flattenWorldBoundaries, flattenWorldPosition, getFlatLongitudeLimits, getRegionView, getWheelZoomStep, getWorldZoom, isWorldOverviewZoom, MAP_ZOOM_STEP } from '../src/utils/map'
-import type { Boundaries, MapData, VisualParticle } from '../src/types'
+import type { Boundaries, MapData } from '../src/types'
+
+function createRelationLayers(options: Omit<Parameters<typeof buildRelationLayers>[0], "paths"> & { phase: number }) {
+  const layers = buildRelationLayers({ ...options, paths: prepareRelationPaths(options.entities, options.relations, options.isGlobe, options.flatWorld) });
+  return [...layers, createRelationFlowLayer(layers, options.phase)];
+}
 
 describe('业务数据与地图交互边界', () => {
   beforeEach(() => useDashboardStore.setState(useDashboardStore.getInitialState(), true))
@@ -35,16 +41,20 @@ describe('业务数据与地图交互边界', () => {
     store.setFactFilters({ videoOnly: false })
     expect(useDashboardStore.getState().factFilters.videoOnly).toBe(false)
   })
-  it('事实/关联模式切换保留区域、时间和选择对象', () => {
+  it('事实/关联模式分别保留区域和详情，切回事实恢复原状态', () => {
     const store = useDashboardStore.getState()
     store.setRegion('province', '430000')
     store.select({ kind: 'fact', id: 'f-1' })
     const before = useDashboardStore.getState()
     store.setMode('relation')
-    const after = useDashboardStore.getState()
-    expect(after.regionId).toBe('430000')
-    expect(after.dateRange).toEqual(before.dateRange)
-    expect(after.selection).toEqual(before.selection)
+    expect(useDashboardStore.getState()).toMatchObject({ level: 'world', regionId: undefined, selection: null, detailsOpen: false })
+    store.setRegion('country', 'CN')
+    store.select({ kind: 'entity', id: 'e-1' })
+    store.setMode('fact')
+    expect(useDashboardStore.getState()).toMatchObject({ level: 'province', regionId: '430000', selection: before.selection, detailsOpen: true })
+    expect(useDashboardStore.getState().dateRange).toEqual(before.dateRange)
+    store.setMode('relation')
+    expect(useDashboardStore.getState()).toMatchObject({ level: 'country', regionId: 'CN', selection: { kind: 'entity', id: 'e-1' } })
   })
   it('空间或时间筛选变化清理过期详情', () => {
     useDashboardStore.getState().select({ kind: 'fact', id: 'f-1' })
@@ -83,27 +93,19 @@ describe('业务数据与地图交互边界', () => {
       },
     }
     const layers = createMapLayers({ mode: 'fact', colorTheme: 'dark', level: 'world', data,
-      overlayVisibility: { ports: true, factSources: true, influence: true }, influencePhase: 0.5,
+      overlayVisibility: { ports: true, factSources: true, influence: true },
       select() {}, selectProvince() {} })
     expect(layers.find((layer) => layer.id === 'overlay-ports')?.props.data).toBe(data.overlays?.ports)
     expect(layers.find((layer) => layer.id === 'overlay-fact-sources')?.props.data).toBe(data.overlays?.factSources)
-    expect(layers.filter((layer) => layer.id.startsWith('overlay-influence-ring-'))).toHaveLength(4)
-    expect(layers.find((layer) => layer.id === 'overlay-influence-ring-0')?.props.pickable).toBe(false)
+    const rings = createInfluenceLayers([], 0.5, false)
+    expect(rings).toHaveLength(4)
+    expect(rings[0].props.pickable).toBe(false)
+    expect(rings[0].props.data).toEqual([])
   })
   it('没有文字叠加数据时不创建字体纹理图层', () => {
     const layers = createMapLayers({ mode: 'fact', colorTheme: 'dark', level: 'world',
       select() {}, selectProvince() {} })
     expect(layers.some((layer) => layer.id === 'overlay-port-labels' || layer.id === 'overlay-source-labels')).toBe(false)
-  })
-  it('50,000 条独立测试粒子不可拾取，不修改真实记录', () => {
-    const particles: VisualParticle[] = Array.from({ length: 50_000 }, (_, i) => ({
-      id: `test-${i}`, anchorFactId: 'test-anchor', anchorId: 'test-location',
-      regionId: 'test-region', position: [112, 28], generatorVersion: 'test', boundaryVersion: 'test',
-    }))
-    const layer = createParticleLayer(particles)
-    expect(layer.props.pickable).toBe(false)
-    expect(layer.props.data).toBe(particles)
-    expect(layer.props.onClick).toBeNull()
   })
   it('无坐标实体不伪造位置，其关系不强行上图；数据本体仍保留', () => {
     const data: MapData = { datasetVersion: 'test', facts: [], truncated: false,
@@ -111,7 +113,7 @@ describe('业务数据与地图交互边界', () => {
         { id: 'b', name: 'b', type: 'test', position: null, factIds: [] }],
       relations: [{ id: 'ab', sourceId: 'a', targetId: 'b', type: 'test', factIds: [] }],
     }
-    const layers = createMapLayers({ mode: 'relation', colorTheme: 'dark', level: 'world', data, select() {}, selectProvince() {} })
+    const layers = createRelationLayers({ entities: data.entities, relations: data.relations, level: 'world', crossRegion: true, flatWorld: false, isGlobe: false, longitude: 105, latitude: 35, phase: 0.5, highlightedEntityId: null, select() {} })
     expect(layers.find((l) => l.id === 'real-relations')?.props.data).toEqual([])
     expect(data.entities).toHaveLength(2)
     expect(data.relations).toHaveLength(1)

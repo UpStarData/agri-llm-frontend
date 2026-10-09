@@ -68,7 +68,9 @@ const FactMapTools = () => {
               event.preventDefault();
               setFilters({ keyword: searchValue.trim() });
             }}
-            onKeyDown={(event) => { if (event.key === "Escape") closeSearch(); }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closeSearch();
+            }}
           >
             <Input
               ref={searchInput}
@@ -79,8 +81,13 @@ const FactMapTools = () => {
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
             />
-            <Button type="text" htmlType="button" icon={<CloseOutlined />}
-              aria-label="关闭事实搜索" onClick={closeSearch} />
+            <Button
+              type="text"
+              htmlType="button"
+              icon={<CloseOutlined />}
+              aria-label="关闭事实搜索"
+              onClick={closeSearch}
+            />
           </form>
           <Button
             type={searchOpen ? "primary" : "text"}
@@ -89,7 +96,7 @@ const FactMapTools = () => {
             aria-label="打开事实搜索"
             aria-expanded={searchOpen}
             aria-pressed={Boolean(filters.keyword)}
-            onClick={() => searchOpen ? closeSearch() : setSearchOpen(true)}
+            onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
           />
         </div>
       )}

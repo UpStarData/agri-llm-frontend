@@ -1,17 +1,14 @@
-import { Button, Checkbox, Collapse, Empty, Select, Spin, Switch } from "antd";
+import { Button, Checkbox, Collapse, Empty, Spin, Switch } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useDashboardStore } from "@/store";
 import { getFactCount } from "@/api/fact";
 import type { FactTaxonomy, FactTaxonomyGroup, GeoPointKind } from "@/api/fact";
+import VarietySelect from "@/pages/Dashboard/component/VarietySelect";
 import MapControlSettings from "./MapControlSettings";
 import FilterBar from "@/components/FilterBar";
 
-const varieties = ["榴莲", "樱桃", "辣椒"].map((value) => ({
-  value,
-  label: value,
-}));
 const overlays: { label: string; kind: GeoPointKind }[] = [
   { label: "农作物主要产区", kind: "region" },
   { label: "港口", kind: "port" },
@@ -36,25 +33,16 @@ const FactMenu = ({
     isPending: taxonomyPending,
     isSuccess: taxonomySuccess,
   } = taxonomyQuery;
-  const {
-    filters,
-    excluded,
-    level,
-    geoKinds,
-    setGeoKinds,
-    setFilters,
-    setExcluded,
-  } = useDashboardStore(
-    useShallow((s) => ({
-      filters: s.factFilters,
-      excluded: s.excludedFilterIds.fact,
-      level: s.level,
-      geoKinds: s.factGeoKinds,
-      setGeoKinds: s.setFactGeoKinds,
-      setFilters: s.setFactFilters,
-      setExcluded: s.setExcludedFilterIds,
-    })),
-  );
+  const { excluded, level, geoKinds, setGeoKinds, setExcluded } =
+    useDashboardStore(
+      useShallow((s) => ({
+        excluded: s.excludedFilterIds.fact,
+        level: s.level,
+        geoKinds: s.factGeoKinds,
+        setGeoKinds: s.setFactGeoKinds,
+        setExcluded: s.setExcludedFilterIds,
+      })),
+    );
   const changeCategory = (key: string) =>
     setExcluded(
       "fact",
@@ -84,16 +72,6 @@ const FactMenu = ({
     }
     setExcluded("fact", [...next]);
   };
-  const varietySelect = (
-    <Select
-      allowClear
-      aria-label="品种筛选"
-      placeholder="全部品种"
-      options={varieties}
-      value={filters.varieties[0]}
-      onChange={(value) => setFilters({ varieties: value ? [value] : [] })}
-    />
-  );
 
   return (
     <>
@@ -209,7 +187,7 @@ const FactMenu = ({
       </div>
       <div className="menu-section">
         <div className="menu-section-title">品种选择</div>
-        {varietySelect}
+        <VarietySelect />
       </div>
       <FilterBar />
       <div className="menu-section">
