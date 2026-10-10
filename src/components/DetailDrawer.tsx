@@ -5,7 +5,13 @@ import { useDashboardStore } from "@/store";
 import FactDetail from "@/pages/Dashboard/component/FactDetail";
 import EntityDetail from "@/pages/Dashboard/component/EntityDetail";
 import RelationDetail from "@/pages/Dashboard/component/RelationDetail";
-const DetailDrawer = () => {
+import type { useRelationCatalogs } from "@/hooks/useRelationQueries";
+
+interface IProps {
+  catalogs: ReturnType<typeof useRelationCatalogs>;
+}
+
+const DetailDrawer = ({ catalogs }: IProps) => {
   const { open, selected, stack, setOpen, back } = useDashboardStore(
     useShallow((s) => ({
       open: s.detailsOpen,
@@ -34,9 +40,9 @@ const DetailDrawer = () => {
         {selected.kind === "fact" ? (
           <FactDetail id={selected.id} />
         ) : selected.kind === "entity" ? (
-          <EntityDetail id={selected.id} />
+          <EntityDetail id={selected.id} catalogs={catalogs} />
         ) : (
-          <RelationDetail id={selected.id} />
+          <RelationDetail id={selected.id} catalogs={catalogs} />
         )}
       </div>
     </div>

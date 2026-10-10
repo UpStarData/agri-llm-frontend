@@ -1,5 +1,6 @@
 import { Button, Empty, Spin } from "antd";
-import { useRelationCatalogs, useRelationDetail } from "@/hooks/useRelationQueries";
+import { useRelationDetail } from "@/hooks/useRelationQueries";
+import type { useRelationCatalogs } from "@/hooks/useRelationQueries";
 import { useDashboardStore } from "@/store";
 import { evidenceStatusLabels } from "@/utils/factFilters";
 import { formatDate } from "@/utils/date";
@@ -7,10 +8,12 @@ import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
 
-interface IProps { id: string }
-const RelationDetail = ({ id }: IProps) => {
+interface IProps {
+  id: string;
+  catalogs: ReturnType<typeof useRelationCatalogs>;
+}
+const RelationDetail = ({ id, catalogs }: IProps) => {
   const detail = useRelationDetail(id);
-  const catalogs = useRelationCatalogs();
   const pushDetail = useDashboardStore((s) => s.pushDetail);
   if (detail.isPending) return <Spin description="正在加载关系详情" />;
   if (detail.isError) return null;

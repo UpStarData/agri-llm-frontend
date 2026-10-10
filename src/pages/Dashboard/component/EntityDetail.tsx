@@ -1,5 +1,6 @@
 import { Button, Empty, Spin } from "antd";
-import { useEntityDetail, useRelationCatalogs } from "@/hooks/useRelationQueries";
+import { useEntityDetail } from "@/hooks/useRelationQueries";
+import type { useRelationCatalogs } from "@/hooks/useRelationQueries";
 import { useDashboardStore } from "@/store";
 import { commodityNameById, evidenceStatusLabels } from "@/utils/factFilters";
 import { useCommodities } from "@/hooks";
@@ -8,10 +9,12 @@ import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
 
-interface IProps { id: string }
-const EntityDetail = ({ id }: IProps) => {
+interface IProps {
+  id: string;
+  catalogs: ReturnType<typeof useRelationCatalogs>;
+}
+const EntityDetail = ({ id, catalogs }: IProps) => {
   const detail = useEntityDetail(id);
-  const catalogs = useRelationCatalogs();
   const commodities = useCommodities();
   const pushDetail = useDashboardStore((s) => s.pushDetail);
   const excluded = useDashboardStore((s) => s.relationFilters.excludedTypes);

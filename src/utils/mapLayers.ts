@@ -26,6 +26,16 @@ const EMPTY: MapData = {
   relations: [],
   truncated: false,
 };
+// 分区色只用于区分地理区域，不代表业务数据大小。
+const LAND_PALETTES: Record<ColorTheme, [number, number, number][]> = {
+  light: [[221, 235, 207], [238, 229, 198], [209, 229, 220], [230, 218, 210], [219, 224, 234], [233, 237, 217]],
+  dark: [[50, 75, 82], [72, 73, 70], [49, 76, 73], [70, 62, 77], [48, 64, 88], [61, 77, 69]],
+};
+export function getLandColor(region: string, theme: ColorTheme): [number, number, number] {
+  const hash = Array.from(region).reduce((value, letter) => (value * 31 + letter.charCodeAt(0)) >>> 0, 0);
+  const palette = LAND_PALETTES[theme];
+  return palette[hash % palette.length];
+}
 const MAP_COLORS: Record<
   ColorTheme,
   {
@@ -106,7 +116,9 @@ export function createMapLayers({
       getFillColor: (f) => [
         ...(level === "country" && f.properties?.regionId === regionId
           ? colors.chinaSelected
-          : colors.worldFill),
+          : f.properties?.regionId
+            ? getLandColor(f.properties.regionId, colorTheme)
+            : colors.worldFill),
         255,
       ],
       getLineColor: colors.worldLine,
@@ -130,7 +142,9 @@ export function createMapLayers({
       getFillColor: (f) => [
         ...(f.properties?.regionId === regionId
           ? colors.chinaSelected
-          : colors.chinaFill),
+          : f.properties?.regionId
+            ? getLandColor(f.properties.regionId, colorTheme)
+            : colors.chinaFill),
         255,
       ],
       getLineColor: colors.chinaLine,

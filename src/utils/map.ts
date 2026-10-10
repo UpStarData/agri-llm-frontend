@@ -65,6 +65,31 @@ export function getFlatLongitudeLimits(width: number, zoom: number) {
   return { min: -limit, max: limit };
 }
 
+/** 以初始视角为中线限制平移，避免循环世界地图被无限拖走。 */
+export function clampFlatView(
+  view: MapViewState,
+  center: MapViewState,
+  width: number,
+  height: number,
+): MapViewState {
+  const viewport = new WebMercatorViewport({ ...center, width, height });
+  const west = viewport.unproject([width * 0.25, height / 2])[0];
+  const south = viewport.unproject([width / 2, height * 0.75])[1];
+  const north = viewport.unproject([width / 2, height * 0.25])[1];
+  const longitudeRange = Math.min(90, Math.abs(center.longitude - west));
+  return {
+    ...view,
+    longitude: Math.max(center.longitude - longitudeRange, Math.min(center.longitude + longitudeRange, view.longitude)),
+    latitude: Math.max(south, Math.min(north, view.latitude)),
+    pitch: 0,
+    bearing: 0,
+  };
+}
+
+export function isGlobeMaxZoom(view: MapViewState, width: number, height: number): boolean {
+  return view.zoom >= getGlobeZoomLimits(width, height, view.latitude).maxZoom - 0.01;
+}
+
 /** GlobeViewport projects a sphere with perspective and latitude-adjusted scale. */
 export function getGlobeFitZoom(
   width: number,

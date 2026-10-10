@@ -15,7 +15,6 @@ import { useBoundaries, useFactGeoPoints } from "@/hooks";
 import type { FactPoint, GeoPointKind, GeoPointsRequest } from "@/api/fact";
 import {
   getGlobeZoomLimits,
-  flattenWorldPosition,
   MAP_ZOOM_STEP,
 } from "@/utils/map";
 import { useDashboardStore } from "@/store";
@@ -30,13 +29,7 @@ import { getMapTooltip } from "@/utils/mapTooltip";
 
 const repeatingFlatView = new MapView({ id: "main-map", repeat: true });
 // 投影切换必须更换视图 ID，防止 deck.gl 复用上一种控制器的约束。
-const globeView = new GlobeView({ id: "main-globe" });
-// Relation mode clamps longitude separately. Finite vertical bounds avoid a
-// width-only minimum zoom that would push the map below a short viewport.
-const FLAT_BOUNDS: [[number, number], [number, number]] = [
-  [-Infinity, -66],
-  [Infinity, 85],
-];
+const globeView = new GlobeView({ id: "main-globe", resolution: 2 });
 const globeController = {
   type: GlobeController,
   dragPan: true,
@@ -50,15 +43,8 @@ const flatController = {
   dragRotate: false,
   keyboard: true,
   normalize: false,
-  maxBounds: FLAT_BOUNDS,
   scrollZoom: false,
-};
-const flatWorldController = {
-  ...flatController,
-  maxBounds: [
-    [-Infinity, flattenWorldPosition([0, -66])[1]],
-    [Infinity, flattenWorldPosition([0, 85])[1]],
-  ] as [[number, number], [number, number]],
+  inertia: 200,
 };
 interface IProps {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
@@ -229,21 +215,20 @@ const MapCanvas = ({
           zoom={camera.zoom}
         />
       )}
+      {!isGlobe && !isGraph && (
+        <div className="map-center-line" aria-hidden="true"><span>中心线</span></div>
+      )}
       {!gpuError && (
+        // 球面必须重新细分多边形，不能复用平面投影的网格与三角剖分。
         <DeckGL
+          key={isGlobe ? "globe" : "flat"}
           id="agri-map"
           style={{ zIndex: "2", display: isGraph ? "none" : undefined }}
           views={isGlobe ? globeView : repeatingFlatView}
           layers={layers}
           pickingRadius={mode === "relation" ? 3 : 0}
           viewState={camera}
-          controller={
-            isGlobe
-              ? globeController
-              : flatWorld
-                ? flatWorldController
-                : flatController
-          }
+          controller={isGlobe ? globeController : flatController}
           onClick={({ object }) => {
             if (mode === "relation" && !object) setHighlightedEntity(null);
           }}
@@ -254,9 +239,8 @@ const MapCanvas = ({
             markInteraction();
             // 保留控制器的 transition 字段，否则会打断原生惯性和滚轮平滑。
             if (
-              !isGlobe &&
               interactionState.isZooming &&
-              next.zoom < (cameraRef.current ?? target).zoom
+              (isGlobe || next.zoom < (cameraRef.current ?? target).zoom)
             )
               setZoom(next);
             else setCamera(next);

@@ -3,11 +3,11 @@ import type { ColorTheme } from "@/types";
 export const THEME_STORAGE_KEY = "agrilink.colorTheme";
 export const readTheme = (): ColorTheme => {
   try {
-    return globalThis.localStorage?.getItem(THEME_STORAGE_KEY) === "light"
-      ? "light"
-      : "dark";
+    return globalThis.localStorage?.getItem(THEME_STORAGE_KEY) === "dark"
+      ? "dark"
+      : "light";
   } catch {
-    return "dark";
+    return "light";
   }
 };
 export const saveTheme = (theme: ColorTheme) => {

@@ -212,7 +212,7 @@ const Dashboard = () => {
         )}
         {mode === "relation" && <RelationContextBar />}
         <ProcessingLog />
-        <DetailDrawer />
+        <DetailDrawer catalogs={relationCatalogs} />
       </div>
     </div>
   );

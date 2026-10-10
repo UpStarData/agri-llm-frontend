@@ -17,6 +17,9 @@ import {
   getWorldZoom,
   GLOBE_MIN_ZOOM,
   GLOBE_WORLD_LATITUDE,
+  clampFlatView,
+  flattenWorldPosition,
+  isGlobeMaxZoom,
 } from "@/utils/map";
 interface IOptions {
   mode: Mode;
@@ -82,18 +85,37 @@ export const useMapCamera = ({
   const setCamera = useCallback(
     (update: MapViewState | ((previous: MapViewState) => MapViewState)) => {
       const previous = cameraRef.current ?? target;
-      const view = typeof update === "function" ? update(previous) : update;
+      const next = typeof update === "function" ? update(previous) : update;
+      const view = isGlobe ? next : clampFlatView(next, flatTarget, width, height);
       cameraRef.current = view;
       setInteractions((previous) => ({
         ...previous,
         [mode]: { targetKey, view },
       }));
     },
-    [target, mode, targetKey],
+    [target, mode, targetKey, isGlobe, flatTarget, width, height],
   );
 
   const setZoom = useCallback(
     (view: MapViewState) => {
+      if (isGlobe && isGlobeMaxZoom(view, width, height)) {
+        const next = clampFlatView({
+          ...flatTarget,
+          longitude: view.longitude + Math.round((flatTarget.longitude - view.longitude) / 360) * 360,
+          latitude: level === "world"
+            ? flattenWorldPosition([view.longitude, view.latitude])[1]
+            : view.latitude,
+          zoom: flatTarget.zoom + 0.5,
+          transitionDuration: 0,
+        }, flatTarget, width, height);
+        setInteractions((previous) => ({
+          ...previous,
+          [mode]: { targetKey: `${level}:${regionId ?? ""}:${width}:${height}:false`, view: next },
+        }));
+        cameraRef.current = next;
+        setIsGlobe(false);
+        return;
+      }
       if (!isGlobe && view.zoom <= getWorldZoom(width, height) + 0.001) {
         setIsGlobe(true);
         changeRegion("");
@@ -101,7 +123,7 @@ export const useMapCamera = ({
       }
       setCamera(view);
     },
-    [height, isGlobe, setCamera, changeRegion, width, setIsGlobe],
+    [height, isGlobe, setCamera, changeRegion, width, setIsGlobe, flatTarget, mode, level, regionId],
   );
   useEffect(() => {
     const element = container.current;

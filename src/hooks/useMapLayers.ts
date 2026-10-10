@@ -166,11 +166,14 @@ export function useMapLayers({
           changeRegion("CN", id);
         },
       }),
+    // DeckGL 按投影重新挂载，必须创建尚未被旧实例销毁的图层。
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [
       flatWorldBoundaries,
       china,
       points,
       flatWorld,
+      isGlobe,
       level,
       regionId,
       mode,
@@ -263,14 +266,18 @@ export function useMapLayers({
         radiusUnits: "pixels",
         getFillColor: (point) => geoColors[point.kind],
       }),
-    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld],
+    // 投影切换时为新的 DeckGL 实例重新创建图层。
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe],
   );
   const influenceLayers = useMemo(
     () =>
       mode === "fact" && mapOverlayVisibility.influence
         ? createInfluenceLayers(points ?? [], influencePhase, flatWorld)
         : [],
-    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld],
+    // 投影切换时为新的 DeckGL 实例重新创建图层。
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe],
   );
   return [
     ...baseLayers,
