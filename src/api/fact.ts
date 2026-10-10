@@ -12,7 +12,10 @@ export interface ApiFact {
   factId: string;
   title: string;
   summary: string;
-  dictLeaf?: string;
+  /** F3 三级分类叶子节点 UUID v7；null=未分类。 */
+  categoryId?: string | null;
+  /** 分类中文名（后端随 categoryId 下发）；null=未分类。 */
+  categoryName?: string | null;
   occurredAt?: string;
   geo?: { regionPath?: { code?: string; name: string; level?: string }[]; geoPoint?: [number, number] | null };
   commodityIds?: string[];
@@ -56,13 +59,14 @@ export interface FactRequest {
   /** 增量游标（ISO 8601，createdAt 口径），与 Page 互斥。 */
   After?: string;
   CardTypes?: CardTypes | readonly [CardTypes, ...CardTypes[]];
+  /** F3 分类筛选：任意层级节点 UUID v7（一级/二级/叶子均可），服务端展开子树。 */
+  CategoryIds?: readonly string[];
   City?: string;
-  CommodityId?: string;
-  DataMode?: DataMode;
+  /** 品种筛选：UUID v7 品种 ID 数组，多选 OR。 */
+  CommodityIds?: readonly string[];
   EntityId?: string;
   EvidenceStatus?: EvidenceStatus;
   Fields?: Fields;
-  LeafKeys?: readonly string[];
   Page?: number;
   PageSize?: number;
   Province?: string;
@@ -80,15 +84,6 @@ export enum CardTypes {
   Price = "price",
   Video = "video",
   Weather = "weather",
-}
-
-/**
- * 数据状态
- */
-export enum DataMode {
-  Desensitized = "desensitized",
-  Real = "real",
-  Simulated = "simulated",
 }
 
 /**

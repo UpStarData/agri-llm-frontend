@@ -1,4 +1,4 @@
-import type { ApiFact } from "@/api/fact";
+import type { ApiFact, FactTaxonomyGroup } from "@/api/fact";
 
 const provinceSuffixes: Record<string, string> = {
   "11": "BJ", "12": "TJ", "13": "HE", "14": "SX", "15": "NM",
@@ -9,15 +9,6 @@ const provinceSuffixes: Record<string, string> = {
   "54": "XZ", "61": "SN", "62": "GS", "63": "QH", "64": "NX",
   "65": "XJ", "71": "TW", "81": "HK", "82": "MO",
 };
-
-export const varietyCommodityIds: Record<string, string> = {
-  "榴莲": "e:cmd:durian",
-  "樱桃": "e:cmd:cherry",
-  "辣椒": "e:cmd:chili",
-};
-export const commodityNameById = Object.fromEntries(
-  Object.entries(varietyCommodityIds).map(([name, id]) => [id, name]),
-) as Record<string, string>;
 
 export const evidenceStatusLabels: Record<string, string> = {
   single_source: "单一来源",
@@ -43,4 +34,34 @@ export const matchesFactFilters = (
     if (!code || !path.some((part) => part.code === code)) return false;
   }
   return true;
+};
+
+/**
+ * 压缩事实层分类筛选入参：一级/二级下的三级类型全保留时直接传层级节点 ID
+ * （契约 A-27：服务端按节点深度展开子树），仅部分保留时下钻到叶子 key。
+ */
+export const compactCategoryIds = (
+  groups: readonly FactTaxonomyGroup[],
+  excluded: readonly string[],
+): string[] => {
+  const excludedKeys = new Set(excluded);
+  const ids: string[] = [];
+  for (const group of groups) {
+    const types = group.categories.flatMap((category) => category.types);
+    if (types.length > 0 && types.every((type) => !excludedKeys.has(type.key))) {
+      ids.push(group.key);
+      continue;
+    }
+    for (const category of group.categories) {
+      if (category.types.length === 0) continue;
+      if (category.types.every((type) => !excludedKeys.has(type.key))) {
+        ids.push(category.key);
+      } else {
+        for (const type of category.types) {
+          if (!excludedKeys.has(type.key)) ids.push(type.key);
+        }
+      }
+    }
+  }
+  return ids;
 };

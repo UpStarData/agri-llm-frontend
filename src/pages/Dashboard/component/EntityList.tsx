@@ -3,7 +3,8 @@ import { useShallow } from "zustand/react/shallow";
 import LayerDrawer from "./LayerDrawer";
 import { useDashboardStore } from "@/store";
 import type { useRelationQueries } from "@/hooks/useRelationQueries";
-import { commodityNameById, evidenceStatusLabels } from "@/utils/factFilters";
+import { useCommodityIdToName } from "@/hooks";
+import { evidenceStatusLabels } from "@/utils/factFilters";
 import { entityCategoryName } from "@/utils/relationFilters";
 import { formatDate } from "@/utils/date";
 import type { EntityCategoryCatalog } from "@/api/relation";
@@ -20,6 +21,7 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
       select: s.select,
     })),
   );
+  const commodityIdToName = useCommodityIdToName();
   const records = noCategories
     ? []
     : (list.data?.pages.flatMap(({ items }) => items) ?? []);
@@ -69,7 +71,7 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                     {[
                       entity.geo?.regionPath?.at(-1)?.name,
                       entity.commodityIds
-                        ?.map((id) => commodityNameById[id] ?? id)
+                        ?.map((id) => commodityIdToName[id] ?? id)
                         .join("、"),
                     ]
                       .filter(Boolean)

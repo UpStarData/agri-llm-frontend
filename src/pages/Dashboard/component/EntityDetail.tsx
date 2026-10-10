@@ -4,7 +4,8 @@ import {
   useRelationCatalogs,
 } from "@/hooks/useRelationQueries";
 import { useDashboardStore } from "@/store";
-import { commodityNameById, evidenceStatusLabels } from "@/utils/factFilters";
+import { useCommodityIdToName } from "@/hooks";
+import { evidenceStatusLabels } from "@/utils/factFilters";
 import { formatDate } from "@/utils/date";
 import EvidenceFacts from "./EvidenceFacts";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
@@ -13,6 +14,7 @@ interface IProps {
 }
 const EntityDetail = ({ id }: IProps) => {
   const detail = useEntityDetail(id);
+  const commodityIdToName = useCommodityIdToName();
   const catalogs = useRelationCatalogs();
   const pushDetail = useDashboardStore((s) => s.pushDetail);
   const excluded = useDashboardStore((s) => s.relationFilters.excludedTypes);
@@ -50,7 +52,7 @@ const EntityDetail = ({ id }: IProps) => {
                   key: "varieties",
                   label: "涉及品种",
                   children: entity.commodityIds
-                    .map((item) => commodityNameById[item] ?? item)
+                    .map((item) => commodityIdToName[item] ?? item)
                     .join("、"),
                 },
               ]

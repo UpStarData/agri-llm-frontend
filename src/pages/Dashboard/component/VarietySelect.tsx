@@ -1,14 +1,10 @@
 import { Select } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
-import { varietyCommodityIds } from "@/utils/factFilters";
+import { useCommodityNameToId } from "@/hooks";
 interface IProps {
   multiple?: boolean;
 }
-const options = Object.keys(varietyCommodityIds).map((value) => ({
-  value,
-  label: value,
-}));
 const VarietySelect = ({ multiple = false }: IProps) => {
   const { varieties, setFilters } = useDashboardStore(
     useShallow((s) => ({
@@ -16,6 +12,11 @@ const VarietySelect = ({ multiple = false }: IProps) => {
       setFilters: s.setFactFilters,
     })),
   );
+  const commodityNameToId = useCommodityNameToId();
+  const options = Object.keys(commodityNameToId).map((value) => ({
+    value,
+    label: value,
+  }));
   return (
     <Select<string | string[]>
       mode={multiple ? "multiple" : undefined}

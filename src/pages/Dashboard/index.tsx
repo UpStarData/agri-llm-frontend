@@ -16,11 +16,16 @@ import LeftLayerDrawer from "@/components/LeftLayerDrawer";
 import RightRecordsDrawer from "@/components/RightRecordsDrawer";
 import ProcessingLog from "./component/ProcessingLog";
 import { useDashboardStore } from "@/store";
-import { useFactList, useFactPoints, useFactTaxonomy } from "@/hooks";
+import {
+  useCommodityNameToId,
+  useFactList,
+  useFactPoints,
+  useFactTaxonomy,
+} from "@/hooks";
 import dayjs, { DISPLAY_TIMEZONE } from "@/utils/date";
 import { CardTypes, TimeRange } from "@/api/fact";
 import type { FactRequest } from "@/api/fact";
-import { provinceApiCode, varietyCommodityIds } from "@/utils/factFilters";
+import { compactCategoryIds, provinceApiCode } from "@/utils/factFilters";
 import { getFactView } from "@/utils/factView";
 import "./index.less";
 
@@ -57,17 +62,15 @@ const Dashboard = () => {
     })),
   );
   const taxonomyQuery = useFactTaxonomy();
-  const selected = useMemo(() => {
-    if (!excluded.length) return [];
-    const excludedKeys = new Set(excluded);
-    return (taxonomyQuery.data?.groups ?? []).flatMap((group) =>
-      group.categories.flatMap((category) =>
-        category.types
-          .filter((type) => !excludedKeys.has(type.key))
-          .map((type) => type.key),
-      ),
-    );
-  }, [excluded, taxonomyQuery.data]);
+  const commodityNameToId = useCommodityNameToId();
+  const commodityId = varieties[0]
+    ? commodityNameToId[varieties[0]]
+    : undefined;
+  // 保留的分类入参：一级/二级全保留时传层级节点 ID（服务端展开子树），仅部分保留下钻到叶子。
+  const keptCategoryIds = useMemo(
+    () => compactCategoryIds(taxonomyQuery.data?.groups ?? [], excluded),
+    [excluded, taxonomyQuery.data],
+  );
   const today = dayjs().tz(DISPLAY_TIMEZONE);
   const days = [1, 7, 30].find(
     (count) =>
@@ -85,16 +88,16 @@ const Dashboard = () => {
           : days === 7
             ? TimeRange.The7D
             : undefined,
-    LeafKeys:
+    CategoryIds:
       excluded.length && taxonomyQuery.data
-        ? [...new Set(selected)]
+        ? keptCategoryIds
         : undefined,
-    CommodityId: varieties[0] ? varietyCommodityIds[varieties[0]] : undefined,
+    CommodityIds: commodityId ? [commodityId] : undefined,
     Q: keyword || undefined,
     CardTypes: videoOnly ? CardTypes.Video : undefined,
   };
   const noCategories =
-    excluded.length > 0 && !!taxonomyQuery.data && selected.length === 0;
+    excluded.length > 0 && !!taxonomyQuery.data && keptCategoryIds.length === 0;
   const factsActive = !noCategories && varieties.length <= 1;
   const factPoints = useFactPoints(factParams, factsActive);
   const factList = useFactList(factParams, factsActive, countryId, provinceId);

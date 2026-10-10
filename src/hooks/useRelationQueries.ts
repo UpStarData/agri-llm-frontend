@@ -20,7 +20,7 @@ import { ApiError } from "@/api/request";
 import type { FactView } from "@/api/fact";
 import type { Relation } from "@/types";
 import { useDashboardStore } from "@/store";
-import { varietyCommodityIds } from "@/utils/factFilters";
+import { useCommodityNameToId } from "@/hooks/useCommodities";
 
 const ENTITY_PAGE_SIZE = 30;
 
@@ -122,8 +122,9 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
     );
 
   const active = mode === "relation";
+  const commodityNameToId = useCommodityNameToId();
   const commodityIds = varieties
-    .map((name) => varietyCommodityIds[name])
+    .map((name) => commodityNameToId[name])
     .filter(Boolean);
 
   const filters = {

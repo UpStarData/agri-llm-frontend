@@ -36,7 +36,7 @@ const FactDetail = ({ id }: IProps) => {
           {
             key: "category",
             label: "分类",
-            children: fact.dictLeaf?.split("|").at(-1) || "-",
+            children: fact.categoryName || "-",
           },
           {
             key: "time",
