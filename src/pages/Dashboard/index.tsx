@@ -102,7 +102,6 @@ const Dashboard = () => {
       relationQueries.commodityIds,
       relationFilters.keyword,
       relationCatalogs.categories.data,
-      relationCatalogs.types.data,
     );
     const relationMapPoints = filterRelationGraph(
       relationQueries.map.data?.entities ?? [],
@@ -112,7 +111,6 @@ const Dashboard = () => {
       relationQueries.commodityIds,
       relationFilters.keyword,
       relationCatalogs.categories.data,
-      relationCatalogs.types.data,
     );
     const pointIds = new Set(
       relationMapPoints.entities.map((entity) => entity.id),

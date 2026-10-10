@@ -12,6 +12,9 @@ import {
 import { useDashboardStore } from "../src/store";
 import type { Entity, Relation } from "../src/types";
 
+// 目录 /relation-types 下发的关系类型 ID（UUID v7，语义 key 已退役）
+const SUPPLIES_TYPE_ID = "01a12521-7294-71a5-99f1-0ed778a2428f";
+
 function createRelationLayers(
   options: Omit<Parameters<typeof buildRelationLayers>[0], "paths"> & {
     phase: number;
@@ -67,7 +70,7 @@ const edges: Relation[] = [
     id: "cl-hx",
     sourceId: "cl",
     targetId: "hx",
-    type: "供应",
+    type: SUPPLIES_TYPE_ID,
     scopeLayer: "global",
     factIds: ["f1"],
     involved_varieties: ["cherry"],
@@ -76,7 +79,7 @@ const edges: Relation[] = [
     id: "hn-hx",
     sourceId: "hn",
     targetId: "hx",
-    type: "供应",
+    type: SUPPLIES_TYPE_ID,
     scopeLayer: "hunan",
     factIds: ["f2", "f3"],
     involved_varieties: ["durian"],
@@ -99,7 +102,7 @@ const edgeData = (layers: ReturnType<typeof createRelationLayers>) =>
   layers.find((l) => l.id === "real-relations")!.props.data as Relation[];
 
 describe("关联筛选与地图规则", () => {
-  it("目录 key 能筛选按中文名称返回的本体与关系", () => {
+  it("目录 typeId 能筛选返回的本体与关系", () => {
     const categories = {
       version: "EC-v1",
       categories: [
@@ -114,7 +117,7 @@ describe("关联筛选与地图规则", () => {
       version: "RT-v1",
       types: [
         {
-          key: "supplies",
+          key: SUPPLIES_TYPE_ID,
           name: "供应",
           colorDomain: "production_supply",
           directed: true,
@@ -123,7 +126,7 @@ describe("关联筛选与地图规则", () => {
         },
       ],
     };
-    expect(relationColor("supplies", types)).toEqual([77, 150, 106]);
+    expect(relationColor(SUPPLIES_TYPE_ID, types)).toEqual([77, 150, 106]);
     expect(
       filterRelationGraph(
         nodes,
@@ -141,16 +144,15 @@ describe("关联筛选与地图规则", () => {
         nodes,
         edges,
         [],
-        ["supplies"],
+        [SUPPLIES_TYPE_ID],
         [],
         "",
         categories,
-        types,
       ).relations,
     ).toEqual([]);
   });
   it("关闭关系类型不移除本体", () => {
-    const result = filterRelationGraph(nodes, edges, [], ["供应"], []);
+    const result = filterRelationGraph(nodes, edges, [], [SUPPLIES_TYPE_ID], []);
     expect(result.entities).toEqual(nodes);
     expect(result.relations).toEqual([]);
   });
@@ -224,10 +226,10 @@ describe("关联筛选与地图规则", () => {
       ),
     ).toEqual([]);
   });
-  it("合作双向流动且无箭头，业务曲线可拾取，装饰不可拾取", () => {
+  it("无向关系双向流动且无箭头，业务曲线可拾取，装饰不可拾取", () => {
     const layers = createRelationLayers({
       ...options,
-      relations: [{ ...edges[0], type: "合作" }],
+      relations: [{ ...edges[0], directed: false }],
     });
     expect(layers.find((l) => l.id === "relation-arrows")).toBeUndefined();
     expect(
@@ -326,7 +328,7 @@ describe("关联上下文与详情", () => {
     const store = useDashboardStore.getState();
     store.enterRelation({ factId: "f1" });
     const revision = useDashboardStore.getState().relationRevision;
-    store.setRelationFilters({ excludedTypes: ["供应"] });
+    store.setRelationFilters({ excludedTypes: [SUPPLIES_TYPE_ID] });
     store.setRegion("country", "CN");
     expect(useDashboardStore.getState().relationRevision).toBe(revision);
     store.setFactFilters({ varieties: ["e:cmd:durian", "e:cmd:cherry"] });

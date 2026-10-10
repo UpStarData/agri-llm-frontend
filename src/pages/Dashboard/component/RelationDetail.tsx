@@ -19,13 +19,13 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
   if (detail.isError) return null;
   const relation = detail.data;
   if (!relation) return <Empty description="暂无详情" />;
-  const { source, target, typeKey } = relation.overview;
-  const type = relationTypeInfo(typeKey, catalogs.types.data);
+  const { source, target, typeId } = relation.overview;
+  const type = relationTypeInfo(typeId, catalogs.types.data);
   const typeFields = (relation.typeFields ?? []).filter(
     (field) => field.value !== null && field.value !== "",
   );
   const arrow =
-    type?.directed === false || typeKey === "合作" ? "↔" : "→";
+    (relation.directed ?? type?.directed) === false ? "↔" : "→";
   return (
     <>
       <DetailIntro
@@ -34,7 +34,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
         title={
           <>
             {source.canonicalName} {arrow}{" "}
-            {type?.name ?? typeKey} {arrow}{" "}
+            {type?.name ?? typeId} {arrow}{" "}
             {target.canonicalName}
           </>
         }
@@ -77,7 +77,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
             {
               key: "type",
               label: "关系类型",
-              value: type?.name ?? typeKey,
+              value: type?.name ?? typeId,
             },
           ]}
         />

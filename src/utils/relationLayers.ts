@@ -233,7 +233,7 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
         directed:
           relation.directed ??
           relationTypeInfo(relation.type, options.relationTypes)?.directed ??
-          relation.type !== "合作",
+          true,
         path,
         color,
         width:

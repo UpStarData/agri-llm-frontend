@@ -21,14 +21,14 @@ export const relationColor = (
   colorDomain?: string,
 ): [number, number, number] => {
   const domain = colorDomain ?? catalog?.types.find(
-    (item) => item.key === type || item.name === type,
+    (item) => item.key === type,
   )?.colorDomain;
   if (domain && relationDomainInfo[domain])
     return relationDomainInfo[domain].color;
   return [126, 160, 207];
 };
 export const relationTypeInfo = (type: string, catalog?: RelationTypeCatalog) =>
-  catalog?.types.find((item) => item.key === type || item.name === type);
+  catalog?.types.find((item) => item.key === type);
 export const entityCategoryName = (
   type: string,
   catalog?: EntityCategoryCatalog,
@@ -44,7 +44,6 @@ export const filterRelationGraph = (
   varieties: string[],
   keyword = "",
   categories?: EntityCategoryCatalog,
-  types?: RelationTypeCatalog,
 ) => {
   const excludedCategoryNames = new Set(excludedCategories);
   categories?.categories.forEach((group) =>
@@ -54,10 +53,6 @@ export const filterRelationGraph = (
     }),
   );
   const excludedRelationNames = new Set(excludedRelations);
-  types?.types.forEach((item) => {
-    if (excludedRelations.includes(item.key))
-      excludedRelationNames.add(item.name);
-  });
   // 品种依据关系预存 involved_varieties，禁止在前端推断多跳关联。
   const varietyRelations = relations.filter(
     (r) =>

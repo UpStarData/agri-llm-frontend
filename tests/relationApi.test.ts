@@ -13,6 +13,10 @@ import {
 } from "../src/api/relation";
 import { relationGraphForView } from "../src/hooks/useRelationQueries";
 
+// 目录 /relation-types 下发的关系类型 ID（UUID v7，语义 key 已退役）
+const SUPPLIES_TYPE_ID = "01a12521-7294-71a5-99f1-0ed778a2428f";
+const PRODUCES_TYPE_ID = "01a12521-7294-71a5-99f1-0ed6afccb5d4";
+
 const response = {
   code: 0,
   message: "OK",
@@ -38,7 +42,7 @@ const response = {
     edges: [
       {
         relationId: "r:1",
-        typeKey: "supplies",
+        typeId: SUPPLIES_TYPE_ID,
         colorDomain: "production_supply",
         directed: true,
         sourceEntityId: "e:1",
@@ -75,6 +79,7 @@ describe("图谱接口契约", () => {
     expect(graph.relations[0]).toEqual(
       expect.objectContaining({
         id: "r:1",
+        type: SUPPLIES_TYPE_ID,
         sourceId: "e:1",
         targetId: "e:2",
         displayLevels: ["china"],
@@ -115,7 +120,7 @@ describe("关系详情接口契约", () => {
         categoryL2: "production_base",
       },
       target: { entityId: "e:2", canonicalName: "市场", categoryL2: "market" },
-      typeKey: "transports_to",
+      typeId: PRODUCES_TYPE_ID,
     },
     supportFacts: [{ factId: "f1", title: "运输事实", basis: "来源说明" }],
     formation: { firstWrittenAt: "2026-09-21", lastUpdatedAt: "2026-10-09" },

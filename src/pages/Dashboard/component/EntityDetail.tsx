@@ -23,7 +23,7 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
   const entity = detail.data;
   if (!entity) return <Empty description="暂无详情" />;
   const relations = (entity.relations ?? []).filter(
-    (group) => !excluded.includes(group.typeKey) && !excluded.includes(group.name),
+    (group) => !excluded.includes(group.typeId),
   );
   const relationCount = relations.reduce((count, group) => count + group.items.length, 0);
   const typeFields = (entity.typeFields ?? []).filter(
@@ -116,7 +116,7 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
       <DetailSection title="关系" hint={`${relationCount} 条`}>
         {relationCount ? (
           relations.map((group) => (
-            <div className="detail-relation-group" key={group.typeKey}>
+            <div className="detail-relation-group" key={group.typeId}>
               <div className="detail-relation-type">{group.name}</div>
               {group.items.map((relation) => (
                 <Button
@@ -128,7 +128,7 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
                   {relation.direction === "incoming"
                     ? relation.peer.canonicalName
                     : entity.canonicalName}{" "}
-                  {relationTypeInfo(group.typeKey, catalogs.types.data)?.directed === false
+                  {relationTypeInfo(group.typeId, catalogs.types.data)?.directed === false
                     ? "↔" : "→"}{" "}
                   {relation.direction === "incoming"
                     ? entity.canonicalName

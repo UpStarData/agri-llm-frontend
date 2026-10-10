@@ -11,8 +11,8 @@ const entities: Entity[] = [
   { id: "risk", name: "风险", type: "opaque-risk-category", displayGroup: "geo_risk", position: [130, 35], factIds: [] },
 ];
 const relations: Relation[] = [
-  { id: "a", sourceId: "farm", targetId: "port", type: "transports_to", colorDomain: "production_supply", factIds: [] },
-  { id: "b", sourceId: "port", targetId: "risk", type: "transports_to", colorDomain: "logistics", factIds: [] },
+  { id: "a", sourceId: "farm", targetId: "port", type: "01a12521-7294-71a5-99f1-0ed778a2428f", colorDomain: "production_supply", factIds: [] },
+  { id: "b", sourceId: "port", targetId: "risk", type: "01a12521-7294-71a5-99f1-0ed778a2428f", colorDomain: "logistics", factIds: [] },
 ];
 const options = {
   entities, relations, level: "world", crossRegion: true, flatWorld: false,

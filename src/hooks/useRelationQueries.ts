@@ -37,7 +37,7 @@ export const relationGraphForView = (response: GraphEnvelope): RelationGraph => 
     })),
     relations: edges.map((edge) => ({
       id: edge.relationId,
-      type: edge.typeKey,
+      type: edge.typeId,
       sourceId: edge.sourceEntityId,
       targetId: edge.targetEntityId,
       displayLevels: edge.displayLevels,
