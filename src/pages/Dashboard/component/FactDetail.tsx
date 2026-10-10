@@ -41,7 +41,7 @@ const FactDetail = ({ id }: IProps) => {
             {
               key: "category",
               label: "分类",
-              value: fact.fullCategoryName || '-',
+              value: fact.fullCategoryName || fact.categoryName || "—",
             },
             {
               key: "time",

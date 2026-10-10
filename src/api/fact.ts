@@ -5,16 +5,18 @@ export interface FactCount { total?: number; todayAdded?: number }
 export interface FactTaxonomyGroup {
   key: string;
   name: string;
-  categories: { name: string; types: { key: string; name: string; emoji: string }[] }[];
+  categories: { key: string; name: string; types: { key: string; name: string; emoji: string }[] }[];
 }
 export interface FactTaxonomy { groups: FactTaxonomyGroup[] }
-export interface Commodity { id: string; name: string }
 export interface ApiFact {
   factId: string;
   title: string;
   summary: string;
   keyMetrics?: string;
-  categoryName?: string;
+  /** F3 三级分类叶子节点 UUID v7；null=未分类。 */
+  categoryId?: string | null;
+  /** 分类中文名（后端随 categoryId 下发）；null=未分类。 */
+  categoryName?: string | null;
   occurredAt?: string;
   geo?: { regionPath?: { code?: string; name: string; level?: string }[]; geoPoint?: [number, number] | null };
   commodityIds?: string[];
@@ -59,13 +61,14 @@ export interface FactRequest {
   /** 增量游标（ISO 8601，createdAt 口径），与 Page 互斥。 */
   After?: string;
   CardTypes?: CardTypes | readonly [CardTypes, ...CardTypes[]];
+  /** F3 分类筛选：任意层级节点 UUID v7（一级/二级/叶子均可），服务端展开子树。 */
+  CategoryIds?: readonly string[];
   City?: string;
-  CommodityId?: string[];
-  DataMode?: DataMode;
+  /** 品种筛选：UUID v7 品种 ID 数组，多选 OR。 */
+  CommodityIds?: readonly string[];
   EntityId?: string;
   EvidenceStatus?: EvidenceStatus;
   Fields?: Fields;
-  LeafKeys?: readonly string[];
   Page?: number;
   PageSize?: number;
   Province?: string;
@@ -83,15 +86,6 @@ export enum CardTypes {
   Price = "price",
   Video = "video",
   Weather = "weather",
-}
-
-/**
- * 数据状态
- */
-export enum DataMode {
-  Desensitized = "desensitized",
-  Real = "real",
-  Simulated = "simulated",
 }
 
 /**
@@ -186,13 +180,5 @@ export const getGeoPoints = (
     url: `/geo-points`,
     method: "GET",
     params: { view, ...(kinds && { kinds: kinds.join(",") }) },
-    errorPresentation: "local",
-  });
-
-// 品种主数据
-export const getCommodities = () =>
-  request<ApiResponse<{ items: Commodity[] }>>({
-    url: `/commodities`,
-    method: "GET",
     errorPresentation: "local",
   });

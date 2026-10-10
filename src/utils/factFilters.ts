@@ -1,4 +1,5 @@
-import type { ApiFact, Commodity } from "@/api/fact";
+import type { ApiFact, FactTaxonomyGroup } from "@/api/fact";
+import type { CommodityItem } from "@/api/commodity";
 
 const provinceSuffixes: Record<string, string> = {
   "11": "BJ", "12": "TJ", "13": "HE", "14": "SX", "15": "NM",
@@ -10,7 +11,7 @@ const provinceSuffixes: Record<string, string> = {
   "65": "XJ", "71": "TW", "81": "HK", "82": "MO",
 };
 
-export const commodityNameById = (id: string, commodities: readonly Commodity[] = []) =>
+export const commodityNameById = (id: string, commodities: readonly CommodityItem[] = []) =>
   commodities.find((commodity) => commodity.id === id)?.name ?? id;
 
 export const evidenceStatusLabels: Record<string, string> = {
@@ -37,4 +38,34 @@ export const matchesFactFilters = (
     if (!code || !path.some((part) => part.code === code)) return false;
   }
   return true;
+};
+
+/**
+ * 压缩事实层分类筛选入参：一级/二级下的三级类型全保留时直接传层级节点 ID
+ * （契约 A-27：服务端按节点深度展开子树），仅部分保留时下钻到叶子 key。
+ */
+export const compactCategoryIds = (
+  groups: readonly FactTaxonomyGroup[],
+  excluded: readonly string[],
+): string[] => {
+  const excludedKeys = new Set(excluded);
+  const ids: string[] = [];
+  for (const group of groups) {
+    const types = group.categories.flatMap((category) => category.types);
+    if (types.length > 0 && types.every((type) => !excludedKeys.has(type.key))) {
+      ids.push(group.key);
+      continue;
+    }
+    for (const category of group.categories) {
+      if (category.types.length === 0) continue;
+      if (category.types.every((type) => !excludedKeys.has(type.key))) {
+        ids.push(category.key);
+      } else {
+        for (const type of category.types) {
+          if (!excludedKeys.has(type.key)) ids.push(type.key);
+        }
+      }
+    }
+  }
+  return ids;
 };

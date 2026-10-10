@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CardTypes,
-  getCommodities,
   getFactCount,
   getFactDetail,
   getFactPoints,
@@ -9,6 +8,7 @@ import {
   getFacts,
   getGeoPoints,
 } from "../src/api/fact";
+import { getCommodities } from "../src/api/commodity";
 import { request } from "../src/api/request";
 import { getFactView } from "../src/utils/factView";
 
@@ -69,19 +69,19 @@ describe("事实层接口参数", () => {
     }));
   });
 
-  it("多选品种和完整分类路径通过 body 发送，均为字符串数组", async () => {
-    const leafKeys = ["nature|天气|高温", "supply|生产主体|基地投产"];
-    const commodityId = ["e:cmd:durian", "e:cmd:cherry"];
-    await getFacts({ CommodityId: commodityId, LeafKeys: leafKeys });
+  it("多选品种和分类节点 ID 通过 body 发送，均为字符串数组", async () => {
+    const categoryIds = ["category-a", "category-b"];
+    const commodityIds = ["commodity-a", "commodity-b"];
+    await getFacts({ CommodityIds: commodityIds, CategoryIds: categoryIds });
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
       method: "POST",
-      data: { commodityId, leafKeys },
+      data: { commodityIds, categoryIds },
     }));
-    getFactPoints({ CommodityId: commodityId, LeafKeys: leafKeys });
+    getFactPoints({ CommodityIds: commodityIds, CategoryIds: categoryIds });
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
       url: "/facts/points",
       method: "POST",
-      data: { commodityId, leafKeys },
+      data: { commodityIds, categoryIds },
     }));
   });
 
