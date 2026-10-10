@@ -1,6 +1,8 @@
 import { Button } from "antd";
 import type { EvidenceFact } from "@/types";
 import { useDashboardStore } from "@/store";
+import { DetailSection } from "./DetailLayout";
+
 interface IProps {
   facts?: EvidenceFact[] | null;
   factIds?: string[] | null;
@@ -8,34 +10,36 @@ interface IProps {
 }
 const EvidenceFacts = ({ facts, factIds, preset }: IProps) => {
   const pushDetail = useDashboardStore((s) => s.pushDetail);
+  const count = facts?.length || factIds?.length || 0;
   return (
-    <>
-      <div className="detail-section-title">证据与来源</div>
-      {!facts?.length && !factIds?.length && !preset && <div>暂无证据事实</div>}
-      {preset && <div>来自预置清单</div>}
+    <DetailSection title="证据与来源" hint={count ? `${count} 条` : undefined}>
+      {preset && <p className="detail-empty">来自预置清单</p>}
+      {!count && !preset && <p className="detail-empty">暂无证据事实</p>}
       {facts?.length
         ? facts.map((fact) => (
-            <div key={fact.factId}>
+            <article className="detail-evidence-card" key={fact.factId}>
               <Button
+                className="detail-evidence-link"
                 type="link"
                 onClick={() => pushDetail({ kind: "fact", id: fact.factId })}
               >
                 {fact.title}
               </Button>
-              {fact.excerpt && <div>{fact.excerpt}</div>}
-            </div>
+              {fact.excerpt && <p>{fact.excerpt}</p>}
+            </article>
           ))
         : (factIds ?? []).map((id) => (
-            <div key={id}>
+            <article className="detail-evidence-card" key={id}>
               <Button
+                className="detail-evidence-link"
                 type="link"
                 onClick={() => pushDetail({ kind: "fact", id })}
               >
                 {id}
               </Button>
-            </div>
+            </article>
           ))}
-    </>
+    </DetailSection>
   );
 };
 export default EvidenceFacts;

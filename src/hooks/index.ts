@@ -1,4 +1,5 @@
 export { useBoundaries } from "./useBoundaries";
+export { useCommodities } from "./useCommodities";
 export {
   useFactTaxonomy,
   useFactList,

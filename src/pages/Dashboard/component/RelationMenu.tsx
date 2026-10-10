@@ -143,7 +143,7 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
       </div>
       <div className="menu-section">
         <div className="menu-section-title">品种选择</div>
-        <VarietySelect multiple />
+        <VarietySelect />
       </div>
       <div className="menu-section">
         <div className="drawer-filter-header">

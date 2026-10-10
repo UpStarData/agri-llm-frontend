@@ -111,7 +111,7 @@
   height: 100%;
 }
 .theme-light .relation-graph-canvas {
-  background: rgba(243, 248, 247, 0.97);
+  background: #e5e7e8;
 }
 .map-status {
   position: absolute;
@@ -532,12 +532,15 @@
 }
 .fact-detail {
   .floating-panel();
+  --detail-muted: #9bb6d2;
+  --detail-line: rgba(143, 181, 215, 0.22);
+  --detail-card: rgba(15, 39, 75, 0.56);
   position: absolute;
   z-index: 6;
   top: 18px;
   bottom: var(--panel-bottom);
   right: calc(36px + var(--right-panel-width));
-  width: min(420px, calc(100% - var(--right-panel-width) - 58px));
+  width: min(600px, calc(100% - var(--right-panel-width) - 58px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -546,33 +549,114 @@
   backdrop-filter: blur(18px) saturate(130%);
   .detail-content {
     overflow: auto;
-    padding: 16px;
+    padding: 0 16px 20px;
     min-height: 0;
-    scrollbar-width: none;
+    scrollbar-width: thin;
   }
   .layer-drawer-header {
     justify-content: space-between;
   }
-  .detail-content::-webkit-scrollbar {
-    display: none;
-  }
-  .ant-descriptions-item-label {
-    min-width: 80px;
-  }
   animation: detail-enter 0.2s ease-out;
+  .detail-intro {
+    padding: 14px 0 10px;
+    border-bottom: 1px solid var(--detail-line);
+  }
+  .detail-id {
+    color: var(--detail-muted);
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
   .detail-title {
-    font-size: 18px;
+    font-size: 16px;
+    line-height: 1.5;
     font-weight: 600;
-    margin-bottom: 16px;
+    margin: 4px 0 0;
   }
-  .detail-section-title {
-    margin: 18px 0 10px;
-    font-size: 14px;
+  .detail-section {
+    padding: 12px 0 10px;
+    border-bottom: 1px solid var(--detail-line);
+  }
+  .detail-section-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: var(--detail-muted);
+    font-size: 13px;
+  }
+  .detail-section-heading h3 {
+    margin: 0;
+    font-size: inherit;
     font-weight: 600;
   }
-  .detail-video {
-    width: 100%;
-    margin-block: 12px;
+  .detail-section-heading span {
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  .detail-paragraph,
+  .detail-empty {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .detail-empty { color: var(--detail-muted); }
+  .detail-rows { margin: 0; }
+  .detail-row {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 0;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--detail-line);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .detail-row:last-child { border-bottom: 0; }
+  .detail-row dt { color: var(--detail-muted); font-weight: 600; }
+  .detail-row dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .detail-key-metrics-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .detail-chip-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .detail-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    height: auto;
+    min-height: 30px;
+    padding: 4px 8px;
+    border: 1px solid var(--detail-line);
+    border-radius: 5px;
+    background: var(--detail-card);
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: normal;
+  }
+  .detail-evidence-card {
+    padding: 9px;
+    margin: 6px 0;
+    border: 1px solid var(--detail-line);
+    border-radius: 6px;
+    background: var(--detail-card);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .detail-evidence-card p { margin: 5px 0 8px; color: var(--detail-muted); }
+  .detail-evidence-card a { display: inline-block; margin-top: 5px; }
+  .detail-evidence-link.ant-btn,
+  .detail-relation-link.ant-btn,
+  .detail-inline-link.ant-btn {
+    height: auto;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+  }
+  .detail-relation-group + .detail-relation-group { margin-top: 10px; }
+  .detail-relation-type { color: var(--detail-muted); font-size: 12px; }
+  .detail-relation-link.ant-btn { display: block; margin-top: 5px; }
+  .detail-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 0; }
+  .detail-back.ant-btn { font-size: 12px; }
+  @media (max-width: 600px) {
+    .detail-row { grid-template-columns: 88px minmax(0, 1fr); }
   }
 }
 @media (max-width: 600px) {
@@ -584,41 +668,76 @@
   }
 }
 .theme-light {
-  color: #16383b;
+  color: #36565c;
   .dashboard-header {
-    background: #f9fcfb;
-    border-color: #c9dddb;
+    background: #f7fbfc;
+    border-color: #dbe6e8;
   }
   .map-canvas {
-    background: radial-gradient(ellipse at 60% 50%, #d8eeeb, #f3f8f7 75%);
+    background: #e5e7e8;
   }
   .map-canvas-globe {
+    background: #e5e7e8;
+  }
+  .map-starfield {
+    display: none;
+  }
+  .map-globe-ocean {
     background: radial-gradient(
-      ellipse at 50% 48%,
-      #102b3c 0%,
-      #0b202d 55%,
-      #07151f 100%
+      circle at 34% 25%,
+      #99d6e6 0%,
+      #78c4df 54%,
+      #65acc5 100%
     );
+    box-shadow: inset -16px -20px 36px rgba(57, 127, 151, 0.12);
   }
   .map-controls,
   .processing-log,
-  .fact-detail,
   .panel-trigger {
-    background: rgba(255, 255, 255, 0.72);
-    border-color: rgba(93, 143, 140, 0.26);
-    box-shadow: 0 12px 40px rgba(46, 92, 88, 0.14);
+    background: #EDF2F2F5;
+    border-color: #dbe6e8;
+    box-shadow: 0 12px 40px rgba(54, 86, 92, 0.1);
   }
   .layer-drawer {
-    background: rgba(245, 252, 251, 0.42);
-    border-color: rgba(93, 143, 140, 0.26);
-    box-shadow: 0 12px 40px rgba(46, 92, 88, 0.14);
+    background: #EDF2F2F5;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-color: #dbe6e8;
+    box-shadow: 0 12px 40px rgba(54, 86, 92, 0.1);
   }
   .fact-detail {
-    background: rgba(245, 252, 251, 0.48);
+    background: #EDF2F2F5;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-color: #dbe6e8;
+    --detail-muted: #536c6f;
+    --detail-line: #dbe6e8;
+    --detail-card: #fcfcf7;
+  }
+  .layer-drawer-header,
+  .menu-section-title,
+  .record-title,
+  .detail-title {
+    color: #36565c;
+  }
+  .layer-record {
+    background: #fcfcf7;
+    color: #36565c;
+    &:hover,
+    &:focus-visible,
+    &.is-selected {
+      background: #f5faf8;
+    }
+  }
+  .layer-record .record-description {
+    color: #536c6f;
+  }
+  .layer-drawer-left .overview-count {
+    color: #333;
   }
   .overview-count,
   .filter-chip.ant-btn {
-    color: #24484d;
+    color: #36565c;
   }
   .filter-chip.ant-btn {
     background: #f0f7f6;
@@ -730,8 +849,8 @@
   }
   .fact-detail {
     top: 18px;
-    right: calc(16px + var(--right-panel-width));
-    width: calc(50% - 22px);
+    right: 10px;
+    width: calc(100% - 20px);
   }
 }
 
@@ -813,7 +932,9 @@
   bottom: 22px;
 }
 .theme-light .map-search-panel {
-  background: rgba(240, 250, 249, 0.96);
+  background: #EDF2F2F5;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 @media (prefers-reduced-motion: reduce) {
   .map-search-panel {
@@ -834,7 +955,9 @@
   font-size: 12px;
 }
 .theme-light .relation-context-bar {
-  background: rgba(245, 252, 251, 0.85);
+  background: #EDF2F2F5;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 @media (max-width: 1100px) {
   .relation-context-bar {
@@ -855,13 +978,13 @@
   .mode-relation .layer-drawer,
   .mode-relation .processing-log,
   .mode-relation .fact-detail {
-    background: rgba(245, 252, 251, 0.92);
+    background: #EDF2F2F5;
   }
   .overview-metric,
   .record-meta,
   .filter-group-name,
   .log-connection-status {
-    color: #567478;
+    color: #536c6f;
   }
 }
 
@@ -911,6 +1034,9 @@
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
   }
+  .fact-detail {
+    background: rgba(12, 30, 58, 0.95);
+  }
   .layer-drawer-header,
   .menu-section,
   .layer-record,
@@ -947,11 +1073,11 @@
 // 列表收起后，详情使用释放出来的右侧空间。
 .dashboard-stage:not(.right-panel-open) .fact-detail {
   right: 18px;
-  width: min(420px, calc(100% - 36px));
+  width: min(600px, calc(100% - 36px));
 }
 @media (max-width: 760px) {
   .dashboard-stage:not(.right-panel-open) .fact-detail {
     right: 10px;
-    width: min(420px, calc(100% - 20px));
+    width: min(600px, calc(100% - 20px));
   }
 }

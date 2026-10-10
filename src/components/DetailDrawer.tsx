@@ -1,5 +1,5 @@
-import { ArrowLeftOutlined, CloseOutlined } from "@ant-design/icons";
-import { Button, Space } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Button } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import FactDetail from "@/pages/Dashboard/component/FactDetail";
@@ -23,24 +23,12 @@ const DetailDrawer = () => {
     <div className="fact-detail" role="region" aria-label={title}>
       <div className="layer-drawer-header">
         <span>{title}</span>
-        <Space>
-          {stack.length > 1 && (
-            <Button
-              type="text"
-              shape="circle"
-              icon={<ArrowLeftOutlined />}
-              aria-label="返回上一详情"
-              onClick={back}
-            />
-          )}
-          <Button
-            type="text"
-            shape="circle"
-            icon={<CloseOutlined />}
-            aria-label="关闭详情"
-            onClick={() => setOpen(false)}
-          />
-        </Space>
+        <Button
+          className="detail-back"
+          icon={<ArrowLeftOutlined />}
+          aria-label={stack.length > 1 ? "返回上一详情" : "关闭详情"}
+          onClick={stack.length > 1 ? back : () => setOpen(false)}
+        >返回</Button>
       </div>
       <div className="detail-content" key={`${selected.kind}:${selected.id}`}>
         {selected.kind === "fact" ? (

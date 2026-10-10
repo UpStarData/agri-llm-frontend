@@ -1,4 +1,4 @@
-import type { ApiFact } from "@/api/fact";
+import type { ApiFact, Commodity } from "@/api/fact";
 
 const provinceSuffixes: Record<string, string> = {
   "11": "BJ", "12": "TJ", "13": "HE", "14": "SX", "15": "NM",
@@ -10,14 +10,8 @@ const provinceSuffixes: Record<string, string> = {
   "65": "XJ", "71": "TW", "81": "HK", "82": "MO",
 };
 
-export const varietyCommodityIds: Record<string, string> = {
-  "榴莲": "e:cmd:durian",
-  "樱桃": "e:cmd:cherry",
-  "辣椒": "e:cmd:chili",
-};
-export const commodityNameById = Object.fromEntries(
-  Object.entries(varietyCommodityIds).map(([name, id]) => [id, name]),
-) as Record<string, string>;
+export const commodityNameById = (id: string, commodities: readonly Commodity[] = []) =>
+  commodities.find((commodity) => commodity.id === id)?.name ?? id;
 
 export const evidenceStatusLabels: Record<string, string> = {
   single_source: "单一来源",

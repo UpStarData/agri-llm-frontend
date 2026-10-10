@@ -4,6 +4,7 @@ import LayerDrawer from "./LayerDrawer";
 import { useDashboardStore } from "@/store";
 import type { useRelationQueries } from "@/hooks/useRelationQueries";
 import { commodityNameById, evidenceStatusLabels } from "@/utils/factFilters";
+import { useCommodities } from "@/hooks";
 import { entityCategoryName } from "@/utils/relationFilters";
 import { formatDate } from "@/utils/date";
 import type { EntityCategoryCatalog } from "@/api/relation";
@@ -13,6 +14,7 @@ interface IProps {
   categories?: EntityCategoryCatalog;
 }
 const EntityList = ({ list, noCategories, categories }: IProps) => {
+  const commodities = useCommodities();
   const { selected, open, select } = useDashboardStore(
     useShallow((s) => ({
       selected: s.selection,
@@ -69,7 +71,7 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                     {[
                       entity.geo?.regionPath?.at(-1)?.name,
                       entity.commodityIds
-                        ?.map((id) => commodityNameById[id] ?? id)
+                        ?.map((id) => commodityNameById(id, commodities.data))
                         .join("、"),
                     ]
                       .filter(Boolean)

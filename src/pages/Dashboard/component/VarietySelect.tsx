@@ -1,15 +1,10 @@
 import { Select } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
-import { varietyCommodityIds } from "@/utils/factFilters";
-interface IProps {
-  multiple?: boolean;
-}
-const options = Object.keys(varietyCommodityIds).map((value) => ({
-  value,
-  label: value,
-}));
-const VarietySelect = ({ multiple = false }: IProps) => {
+import { useCommodities } from "@/hooks";
+
+const VarietySelect = () => {
+  const commodities = useCommodities();
   const { varieties, setFilters } = useDashboardStore(
     useShallow((s) => ({
       varieties: s.factFilters.varieties,
@@ -17,22 +12,17 @@ const VarietySelect = ({ multiple = false }: IProps) => {
     })),
   );
   return (
-    <Select<string | string[]>
-      mode={multiple ? "multiple" : undefined}
+    <Select<string[]>
+      mode="multiple"
       allowClear
       aria-label="品种筛选"
-      placeholder={
-        !multiple && varieties.length > 1 ? "请选择一个品种" : "全部品种"
-      }
-      options={options}
-      value={
-        multiple ? varieties : varieties.length === 1 ? varieties[0] : undefined
-      }
-      onChange={(value) =>
-        setFilters({
-          varieties: Array.isArray(value) ? value : value ? [value] : [],
-        })
-      }
+      loading={commodities.isPending}
+      disabled={commodities.isPending || commodities.isError}
+      notFoundContent={commodities.isError ? "品种加载失败" : "暂无品种"}
+      placeholder="全部品种"
+      options={(commodities.data ?? []).map(({ id, name }) => ({ value: id, label: name }))}
+      value={varieties}
+      onChange={(value) => setFilters({ varieties: value })}
     />
   );
 };

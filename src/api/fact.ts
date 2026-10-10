@@ -8,11 +8,13 @@ export interface FactTaxonomyGroup {
   categories: { name: string; types: { key: string; name: string; emoji: string }[] }[];
 }
 export interface FactTaxonomy { groups: FactTaxonomyGroup[] }
+export interface Commodity { id: string; name: string }
 export interface ApiFact {
   factId: string;
   title: string;
   summary: string;
-  dictLeaf?: string;
+  keyMetrics?: string;
+  categoryName?: string;
   occurredAt?: string;
   geo?: { regionPath?: { code?: string; name: string; level?: string }[]; geoPoint?: [number, number] | null };
   commodityIds?: string[];
@@ -21,6 +23,7 @@ export interface ApiFact {
   evidenceStatus?: string;
   dataMode?: string;
   createdAt?: string;
+  fullCategoryName?: string
 }
 export interface FactPage { items: ApiFact[]; total: number }
 export interface FactPoint {
@@ -57,7 +60,7 @@ export interface FactRequest {
   After?: string;
   CardTypes?: CardTypes | readonly [CardTypes, ...CardTypes[]];
   City?: string;
-  CommodityId?: string;
+  CommodityId?: string[];
   DataMode?: DataMode;
   EntityId?: string;
   EvidenceStatus?: EvidenceStatus;
@@ -183,5 +186,13 @@ export const getGeoPoints = (
     url: `/geo-points`,
     method: "GET",
     params: { view, ...(kinds && { kinds: kinds.join(",") }) },
+    errorPresentation: "local",
+  });
+
+// 品种主数据
+export const getCommodities = () =>
+  request<ApiResponse<{ items: Commodity[] }>>({
+    url: `/commodities`,
+    method: "GET",
     errorPresentation: "local",
   });

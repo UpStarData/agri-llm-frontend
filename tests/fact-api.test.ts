@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CardTypes,
+  getCommodities,
   getFactCount,
   getFactDetail,
   getFactPoints,
@@ -68,18 +69,19 @@ describe("事实层接口参数", () => {
     }));
   });
 
-  it("品种和完整分类路径通过 body 发送，leafKeys 为字符串数组", async () => {
+  it("多选品种和完整分类路径通过 body 发送，均为字符串数组", async () => {
     const leafKeys = ["nature|天气|高温", "supply|生产主体|基地投产"];
-    await getFacts({ CommodityId: "e:cmd:durian", LeafKeys: leafKeys });
+    const commodityId = ["e:cmd:durian", "e:cmd:cherry"];
+    await getFacts({ CommodityId: commodityId, LeafKeys: leafKeys });
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
       method: "POST",
-      data: { commodityId: "e:cmd:durian", leafKeys },
+      data: { commodityId, leafKeys },
     }));
-    getFactPoints({ CommodityId: "e:cmd:durian", LeafKeys: leafKeys });
+    getFactPoints({ CommodityId: commodityId, LeafKeys: leafKeys });
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
       url: "/facts/points",
       method: "POST",
-      data: { commodityId: "e:cmd:durian", leafKeys },
+      data: { commodityId, leafKeys },
     }));
   });
 
@@ -90,6 +92,10 @@ describe("事实层接口参数", () => {
   });
 
   it("字典、计数、星点与详情使用各自地址且不传取消信号", () => {
+    getCommodities();
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({
+      url: "/commodities", method: "GET",
+    }));
     getFactTaxonomy();
     expect(vi.mocked(request).mock.lastCall?.[0]).not.toHaveProperty("signal");
     expect(request).toHaveBeenLastCalledWith(expect.objectContaining({

@@ -16,6 +16,7 @@ type MapControl =
   "globe" | "graph" | "ports" | "fullscreen" | "zoom" | "reset" | "influence" | "video" | "search";
 
 interface IFactFilters {
+  // 与 /commodities 返回的 id 一致，事实层和关联层共用。
   varieties: string[];
   countryId: string;
   provinceId: string;

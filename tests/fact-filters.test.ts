@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesFactFilters, provinceApiCode, varietyCommodityIds } from "../src/utils/factFilters";
+import { commodityNameById, matchesFactFilters, provinceApiCode } from "../src/utils/factFilters";
 import type { ApiFact } from "../src/api/fact";
 
 const fact: ApiFact = {
@@ -24,7 +24,8 @@ describe("事实区域与品种筛选", () => {
     expect(matchesFactFilters(fact, "", "")).toBe(true);
     expect(matchesFactFilters(fact, "CN", "430000")).toBe(true);
     expect(matchesFactFilters(fact, "CN", "440000")).toBe(false);
-    expect(varietyCommodityIds["榴莲"]).toBe("e:cmd:durian");
+    expect(commodityNameById("e:cmd:durian", [{ id: "e:cmd:durian", name: "榴莲" }])).toBe("榴莲");
+    expect(commodityNameById("e:cmd:other", [])).toBe("e:cmd:other");
   });
 
 });

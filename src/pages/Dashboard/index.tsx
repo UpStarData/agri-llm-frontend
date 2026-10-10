@@ -16,11 +16,11 @@ import LeftLayerDrawer from "@/components/LeftLayerDrawer";
 import RightRecordsDrawer from "@/components/RightRecordsDrawer";
 import ProcessingLog from "./component/ProcessingLog";
 import { useDashboardStore } from "@/store";
-import { useFactList, useFactPoints, useFactTaxonomy } from "@/hooks";
+import { useCommodities, useFactList, useFactPoints, useFactTaxonomy } from "@/hooks";
 import dayjs, { DISPLAY_TIMEZONE } from "@/utils/date";
 import { CardTypes, TimeRange } from "@/api/fact";
 import type { FactRequest } from "@/api/fact";
-import { provinceApiCode, varietyCommodityIds } from "@/utils/factFilters";
+import { provinceApiCode } from "@/utils/factFilters";
 import { getFactView } from "@/utils/factView";
 import "./index.less";
 
@@ -56,6 +56,7 @@ const Dashboard = () => {
       dates: s.dateRange,
     })),
   );
+  useCommodities();
   const taxonomyQuery = useFactTaxonomy();
   const selected = useMemo(() => {
     if (!excluded.length) return [];
@@ -89,13 +90,13 @@ const Dashboard = () => {
       excluded.length && taxonomyQuery.data
         ? [...new Set(selected)]
         : undefined,
-    CommodityId: varieties[0] ? varietyCommodityIds[varieties[0]] : undefined,
+    CommodityId: varieties.length ? varieties : undefined,
     Q: keyword || undefined,
     CardTypes: videoOnly ? CardTypes.Video : undefined,
   };
   const noCategories =
     excluded.length > 0 && !!taxonomyQuery.data && selected.length === 0;
-  const factsActive = !noCategories && varieties.length <= 1;
+  const factsActive = !noCategories;
   const factPoints = useFactPoints(factParams, factsActive);
   const factList = useFactList(factParams, factsActive, countryId, provinceId);
   const relationCatalogs = useRelationCatalogs();
@@ -209,12 +210,7 @@ const Dashboard = () => {
           )}
         </LeftLayerDrawer>
         {mode === "fact" ? (
-          <RightRecordsDrawer
-            factList={factList}
-            emptyMessage={
-              varieties.length > 1 ? "请选择一个品种查看事实" : undefined
-            }
-          />
+          <RightRecordsDrawer factList={factList} />
         ) : (
           <EntityList
             list={relationQueries.list}

@@ -329,12 +329,12 @@ describe("关联上下文与详情", () => {
     store.setRelationFilters({ excludedTypes: ["供应"] });
     store.setRegion("country", "CN");
     expect(useDashboardStore.getState().relationRevision).toBe(revision);
-    store.setFactFilters({ varieties: ["榴莲", "樱桃"] });
+    store.setFactFilters({ varieties: ["e:cmd:durian", "e:cmd:cherry"] });
     expect(useDashboardStore.getState().relationRevision).toBe(revision + 1);
     store.setMode("fact");
     expect(useDashboardStore.getState().factFilters.varieties).toEqual([
-      "榴莲",
-      "樱桃",
+      "e:cmd:durian",
+      "e:cmd:cherry",
     ]);
   });
   it("支撑事实在当前tab中打开，逐层返回原本体与关系", () => {
