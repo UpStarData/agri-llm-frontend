@@ -1,3 +1,4 @@
+import { ECOLOGY_THEME as eco, rgb, rgba } from "./ecologyTheme";
 import {
   GeoJsonLayer,
   PathLayer,
@@ -28,7 +29,7 @@ const EMPTY: MapData = {
 };
 // 分区色只用于区分地理区域，不代表业务数据大小。
 const LAND_PALETTES: Record<ColorTheme, [number, number, number][]> = {
-  light: [[221, 235, 207], [238, 229, 198], [209, 229, 220], [230, 218, 210], [219, 224, 234], [233, 237, 217]],
+  light: eco.landPalette.map(rgb),
   dark: [[50, 75, 82], [72, 73, 70], [49, 76, 73], [70, 62, 77], [48, 64, 88], [61, 77, 69]],
 };
 export function getLandColor(region: string, theme: ColorTheme): [number, number, number] {
@@ -60,20 +61,21 @@ const MAP_COLORS: Record<
     entity: [239, 185, 102],
   },
   light: {
-    worldFill: [224, 240, 238],
-    worldLine: [129, 166, 165],
-    chinaFill: [194, 225, 220],
-    chinaSelected: [115, 190, 177],
-    chinaLine: [93, 159, 150],
-    fact: [24, 137, 126],
-    relation: [192, 125, 36, 170],
-    entity: [190, 117, 31],
+    worldFill: rgb(eco.land),
+    worldLine: rgb(eco.borderCountry),
+    chinaFill: rgb(eco.land),
+    chinaSelected: rgb(eco.selected),
+    chinaLine: rgb(eco.borderCountry),
+    fact: rgb(eco.production),
+    relation: rgba(eco.route, 170),
+    entity: rgb(eco.production),
   },
 };
 export function createMapLayers({
   world,
   china,
   points = [],
+  selectedFactId,
   regionId,
   level,
   mode,
@@ -88,6 +90,7 @@ export function createMapLayers({
   world?: Boundaries;
   china?: Boundaries;
   points?: FactPoint[];
+  selectedFactId?: string;
   regionId?: string;
   level: string;
   mode: Mode;
@@ -110,7 +113,7 @@ export function createMapLayers({
       data: world,
       pickable: true,
       autoHighlight: true,
-      highlightColor: [92, 210, 200, 115],
+      highlightColor: colorTheme === "light" ? rgba(eco.selected, 90) : [92, 210, 200, 115],
       filled: true,
       stroked: true,
       getFillColor: (f) => [
@@ -119,11 +122,11 @@ export function createMapLayers({
           : f.properties?.regionId
             ? getLandColor(f.properties.regionId, colorTheme)
             : colors.worldFill),
-        255,
+        colorTheme === "light" && f.properties?.regionId === regionId ? 170 : 255,
       ],
       getLineColor: colors.worldLine,
       lineWidthMinPixels: 0.5,
-      updateTriggers: { getFillColor: [level, regionId, colorTheme] },
+      updateTriggers: { getFillColor: [level, regionId, colorTheme], getLineColor: colorTheme },
       onClick: ({ object }) => {
         if (object?.properties?.regionId)
           selectCountry?.(object.properties.regionId);
@@ -136,7 +139,7 @@ export function createMapLayers({
         level === "province" || (level === "country" && regionId === "CN"),
       pickable: true,
       autoHighlight: true,
-      highlightColor: [92, 210, 200, 115],
+      highlightColor: colorTheme === "light" ? rgba(eco.selected, 90) : [92, 210, 200, 115],
       filled: true,
       stroked: true,
       getFillColor: (f) => [
@@ -145,11 +148,11 @@ export function createMapLayers({
           : f.properties?.regionId
             ? getLandColor(f.properties.regionId, colorTheme)
             : colors.chinaFill),
-        255,
+        colorTheme === "light" && f.properties?.regionId === regionId ? 170 : 255,
       ],
       getLineColor: colors.chinaLine,
       lineWidthMinPixels: 0.7,
-      updateTriggers: { getFillColor: [regionId, colorTheme] },
+      updateTriggers: { getFillColor: [regionId, colorTheme], getLineColor: colorTheme },
       onClick: ({ object }) => {
         if (object?.properties?.regionId && object.properties.name)
           selectProvince(object.properties.regionId);
@@ -164,6 +167,11 @@ export function createMapLayers({
       getRadius: 5,
       radiusUnits: "pixels",
       getFillColor: colors.fact,
+      stroked: colorTheme === "light",
+      getLineColor: rgba(eco.selected, 140),
+      getLineWidth: (point) => point.factId === selectedFactId ? 4 : 0,
+      lineWidthUnits: "pixels",
+      updateTriggers: { getFillColor: colorTheme, getPosition: flatWorld, getLineWidth: [colorTheme, selectedFactId] },
       onClick: ({ object }) => {
         if (object) select({ kind: "fact", id: object.factId });
       },
@@ -176,8 +184,9 @@ export function createMapLayers({
       getPosition: (d) => position(d.position),
       getRadius: 7,
       radiusUnits: "pixels",
-      getFillColor: [81, 175, 230, 220],
-      getLineColor: [235, 249, 255, 245],
+      getFillColor: colorTheme === "light" ? rgba(eco.hub, 235) : [81, 175, 230, 220],
+      getLineColor: colorTheme === "light" ? rgba(eco.panel, 255) : [235, 249, 255, 245],
+      updateTriggers: { getFillColor: colorTheme, getLineColor: colorTheme, getPosition: flatWorld },
       stroked: true,
       lineWidthUnits: "pixels",
       getLineWidth: 1,
@@ -197,7 +206,8 @@ export function createMapLayers({
             sizeUnits: "pixels",
             getPixelOffset: [0, 17],
             getTextAnchor: "middle",
-            getColor: colorTheme === "dark" ? [226, 241, 247] : [29, 76, 96],
+            updateTriggers: { getColor: colorTheme, getPosition: flatWorld },
+            getColor: colorTheme === "dark" ? [226, 241, 247] : rgb(eco.text),
           }),
         ]
       : []),
@@ -209,7 +219,8 @@ export function createMapLayers({
       getPosition: (d) => position(d.position),
       getRadius: 6,
       radiusUnits: "pixels",
-      getFillColor: [245, 171, 91, 220],
+      getFillColor: colorTheme === "light" ? rgba(eco.production, 230) : [245, 171, 91, 220],
+      updateTriggers: { getFillColor: colorTheme, getPosition: flatWorld },
     }),
     ...(mode === "fact" && overlayVisibility.factSources && factSources.length
       ? [
@@ -226,7 +237,8 @@ export function createMapLayers({
             sizeUnits: "pixels",
             getPixelOffset: [0, 16],
             getTextAnchor: "middle",
-            getColor: colorTheme === "dark" ? [255, 219, 176] : [138, 75, 29],
+            updateTriggers: { getColor: colorTheme, getPosition: flatWorld },
+            getColor: colorTheme === "dark" ? [255, 219, 176] : rgb(eco.text),
           }),
         ]
       : []),
@@ -238,6 +250,7 @@ export function createInfluenceLayers(
   points: FactPoint[],
   phase: number,
   flatWorld: boolean,
+  colorTheme: ColorTheme = "dark",
 ): Layer[] {
   const influence = points.filter(
     (point) =>
@@ -257,13 +270,11 @@ export function createInfluenceLayers(
       widthUnits: "pixels",
       getWidth: index === 3 ? 1 : 2,
       getColor: [
-        255,
-        157,
-        86,
+        ...(colorTheme === "light" ? rgb(eco.priorityRoute) : [255, 157, 86] as [number, number, number]),
         index === 3 ? 95 : Math.round((1 - progress) * 190),
       ],
       parameters: { cullMode: "none" },
-      updateTriggers: { getPath: [progress, flatWorld], getColor: progress },
+      updateTriggers: { getPath: [progress, flatWorld], getColor: [progress, colorTheme] },
     });
   });
 }

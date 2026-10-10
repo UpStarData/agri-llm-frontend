@@ -46,6 +46,7 @@ export interface EvidenceFact {
   excerpt?: string;
 }
 export interface Entity {
+  displayGroup?: string;
   id: string;
   name: string;
   description?: string;

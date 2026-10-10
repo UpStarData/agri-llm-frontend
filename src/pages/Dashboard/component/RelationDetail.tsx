@@ -19,32 +19,137 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
   if (detail.isError) return null;
   const relation = detail.data;
   if (!relation) return <Empty description="暂无详情" />;
-  const type = relationTypeInfo(relation.type, catalogs.types.data);
-  const arrow = type?.directed === false || relation.type === "合作" ? "↔" : "→";
+  const { source, target, typeKey } = relation.overview;
+  const type = relationTypeInfo(typeKey, catalogs.types.data);
+  const typeFields = (relation.typeFields ?? []).filter(
+    (field) => field.value !== null && field.value !== "",
+  );
+  const arrow =
+    type?.directed === false || typeKey === "合作" ? "↔" : "→";
   return (
     <>
-      <DetailIntro id={relation.id} label="关系 ID" title={<>{relation.source?.name ?? relation.sourceId} {arrow} {type?.name ?? relation.type} {arrow} {relation.target?.name ?? relation.targetId}</>} />
+      <DetailIntro
+        id={relation.relationId}
+        label="关系 ID"
+        title={
+          <>
+            {source.canonicalName} {arrow}{" "}
+            {type?.name ?? typeKey} {arrow}{" "}
+            {target.canonicalName}
+          </>
+        }
+      />
       <DetailSection title="关系概览">
-        <DetailRows items={[
-          { key: "source", label: "起点", value: <Button className="detail-inline-link" type="link" onClick={() => pushDetail({ kind: "entity", id: relation.sourceId })}>{relation.source?.name ?? relation.sourceId}{relation.source && `（${entityCategoryName(relation.source.type, catalogs.categories.data)}）`}</Button> },
-          { key: "target", label: "终点", value: <Button className="detail-inline-link" type="link" onClick={() => pushDetail({ kind: "entity", id: relation.targetId })}>{relation.target?.name ?? relation.targetId}{relation.target && `（${entityCategoryName(relation.target.type, catalogs.categories.data)}）`}</Button> },
-          { key: "type", label: "关系类型", value: type?.name ?? relation.type },
-        ]} />
+        <DetailRows
+          items={[
+            {
+              key: "source",
+              label: "起点",
+              value: (
+                <Button
+                  className="detail-inline-link"
+                  type="link"
+                  onClick={() =>
+                    pushDetail({ kind: "entity", id: source.entityId })
+                  }
+                >
+                  {source.canonicalName}
+                  {`（${entityCategoryName(source.categoryL2, catalogs.categories.data)}）`}
+                </Button>
+              ),
+            },
+            {
+              key: "target",
+              label: "终点",
+              value: (
+                <Button
+                  className="detail-inline-link"
+                  type="link"
+                  onClick={() =>
+                    pushDetail({ kind: "entity", id: target.entityId })
+                  }
+                >
+                  {target.canonicalName}
+                  {`（${entityCategoryName(target.categoryL2, catalogs.categories.data)}）`}
+                </Button>
+              ),
+            },
+            {
+              key: "type",
+              label: "关系类型",
+              value: type?.name ?? typeKey,
+            },
+          ]}
+        />
       </DetailSection>
-      {relation.basis && <DetailSection title="判断依据"><p className="detail-paragraph">{relation.basis}</p></DetailSection>}
-      {relation.attributes && Object.entries(relation.attributes).some(([, value]) => value !== "") &&
-        <DetailSection title="属性与数值"><DetailRows items={Object.entries(relation.attributes).filter(([, value]) => value !== "").map(([key, value]) => ({ key, label: key, value }))} /></DetailSection>}
+      {typeFields.length > 0 && (
+        <DetailSection title="属性与数值">
+          <DetailRows
+            items={typeFields.map((field, index) => ({
+              key: `${field.label}-${index}`,
+              label: field.label,
+              value: field.value,
+            }))}
+          />
+        </DetailSection>
+      )}
       <DetailSection title="证据状态">
-        <DetailRows items={[
-          { key: "evidence", label: "状态", value: relation.evidenceStatus ? (evidenceStatusLabels[relation.evidenceStatus] ?? relation.evidenceStatus) : "—" },
-          { key: "origin", label: "来源类型", value: relation.sourceType ? (relation.sourceType === "preset" ? "预置" : "事实") : "—" },
-        ]} />
+        <DetailRows
+          items={[
+            {
+              key: "evidence",
+              label: "状态",
+              value: relation.evidenceStatus
+                ? (evidenceStatusLabels[relation.evidenceStatus] ??
+                  relation.evidenceStatus)
+                : "—",
+            },
+            {
+              key: "origin",
+              label: "来源类型",
+              value: relation.sourceType
+                ? relation.sourceType === "preset"
+                  ? "预置"
+                  : "事实"
+                : "—",
+            },
+          ]}
+        />
       </DetailSection>
-      <EvidenceFacts facts={relation.evidence} factIds={relation.factIds} preset={relation.sourceType === "preset"} />
-      {(relation.createdAt || relation.updatedAt) && <DetailSection title="形成过程"><DetailRows items={[
-        ...(relation.createdAt ? [{ key: "created", label: "首次写入", value: formatDate(relation.createdAt) }] : []),
-        ...(relation.updatedAt ? [{ key: "updated", label: "最近更新", value: formatDate(relation.updatedAt) }] : []),
-      ]} /></DetailSection>}
+      <EvidenceFacts
+        facts={relation.supportFacts?.map((fact) => ({
+          factId: fact.factId,
+          title: fact.title,
+          excerpt: fact.basis ?? undefined,
+        }))}
+        preset={relation.sourceType === "preset"}
+      />
+      {(relation.formation?.firstWrittenAt || relation.formation?.lastUpdatedAt) && (
+        <DetailSection title="形成过程">
+          <DetailRows
+            items={[
+              ...(relation.formation?.firstWrittenAt
+                ? [
+                    {
+                      key: "created",
+                      label: "首次写入",
+                      value: formatDate(relation.formation?.firstWrittenAt),
+                    },
+                  ]
+                : []),
+              ...(relation.formation?.lastUpdatedAt
+                ? [
+                    {
+                      key: "updated",
+                      label: "最近更新",
+                      value: formatDate(relation.formation?.lastUpdatedAt),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </DetailSection>
+      )}
     </>
   );
 };

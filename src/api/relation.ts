@@ -199,8 +199,45 @@ export const getRelationGraphPoints = (data: GraphPointsRequest) =>
     errorPresentation: "local",
   });
 
+export interface EntityDetailResponse {
+  entityId: string;
+  canonicalName: string;
+  category: { categoryId: string; displayGroup?: string | null };
+  geo?: {
+    regionPath?: { level: string; code: string; name: string }[] | null;
+    geoPoint?: [number, number] | null;
+    geoPrecision?: "exact" | "approx" | "none";
+    viewLevels?: FactView[];
+  } | null;
+  commodityIds?: string[] | null;
+  typeFields?: { label: string; value: string | number | null }[] | null;
+  summary?: string | null;
+  media?: unknown[] | null;
+  evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";
+  sourceType?: "fact" | "preset";
+  presetRef?: string | null;
+  formation?: { firstWrittenAt?: string; lastUpdatedAt?: string } | null;
+  relations?: {
+    typeKey: string;
+    name: string;
+    colorDomain: string;
+    items: {
+      relationId: string;
+      direction: "outgoing" | "incoming";
+      peer: { entityId: string; canonicalName: string; categoryId: string };
+      supportFactCount: number;
+    }[];
+  }[] | null;
+  supportFacts?: {
+    factId: string;
+    title: string;
+    occurredAt?: string | null;
+    sourceUrl?: string | null;
+  }[] | null;
+}
+
 export const getEntity = (id: string) =>
-  request<ApiResponse<Entity>>({
+  request<ApiResponse<EntityDetailResponse>>({
     url: `/entities/${encodeURIComponent(id)}`,
     method: "GET",
     errorPresentation: "local",

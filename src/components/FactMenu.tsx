@@ -86,7 +86,7 @@ const FactMenu = ({
               <span>当前事实</span>
             </div>
             <div className="overview-metric">
-              <span className="overview-count">{count?.todayAdded ?? "-"}</span>
+              <span className="overview-count overview-count-new">{count?.todayAdded ?? "-"}</span>
               <span>今日新增</span>
             </div>
           </div>

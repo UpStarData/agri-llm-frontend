@@ -22,47 +22,155 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
   if (detail.isError) return null;
   const entity = detail.data;
   if (!entity) return <Empty description="暂无详情" />;
-  const relations = entity.relations?.filter((r) => {
-    const type = relationTypeInfo(r.type, catalogs.types.data);
-    return !excluded.includes(r.type) && !excluded.includes(type?.key ?? "");
-  }) ?? [];
+  const relations = (entity.relations ?? []).filter(
+    (group) => !excluded.includes(group.typeKey) && !excluded.includes(group.name),
+  );
+  const relationCount = relations.reduce((count, group) => count + group.items.length, 0);
+  const typeFields = (entity.typeFields ?? []).filter(
+    (field) => field.value !== null && field.value !== "",
+  );
+  const regionPath = entity.geo?.regionPath ?? [];
   return (
     <>
-      <DetailIntro id={entity.id} label="本体 ID" title={entity.name} />
-      {entity.description && <DetailSection title="本体简介"><p className="detail-paragraph">{entity.description}</p></DetailSection>}
+      <DetailIntro id={entity.entityId} label="本体 ID" title={entity.canonicalName} />
+      {entity.summary && (
+        <DetailSection title="本体简介">
+          <p className="detail-paragraph">{entity.summary}</p>
+        </DetailSection>
+      )}
       <DetailSection title="分类与位置">
-        <DetailRows items={[
-          { key: "type", label: "分类", value: entityCategoryName(entity.type, catalogs.categories.data) },
-          { key: "address", label: "所在地", value: entity.position ? (entity.address || "—") : [entity.address, "暂无位置"].filter(Boolean).join(" / ") },
-          ...(entity.regionPath?.length ? [{ key: "region", label: "地理范围", value: entity.regionPath.map(({ name }) => name).join(" › ") }] : []),
-          ...(entity.commodityIds?.length ? [{ key: "varieties", label: "涉及品种", value: entity.commodityIds.map((item) => commodityNameById(item, commodities.data)).join("、") }] : []),
-        ]} />
+        <DetailRows
+          items={[
+            {
+              key: "type",
+              label: "分类",
+              value: entityCategoryName(entity.category.categoryId, catalogs.categories.data),
+            },
+            {
+              key: "address",
+              label: "所在地",
+              value: entity.geo?.geoPoint
+                ? regionPath.map(({ name }) => name).join(" › ") || "—"
+                : [regionPath.map(({ name }) => name).join(" › "), "暂无位置"]
+                    .filter(Boolean).join(" / "),
+            },
+            ...(regionPath?.length
+              ? [
+                  {
+                    key: "region",
+                    label: "地理范围",
+                    value: regionPath
+                      .map(({ name }) => name)
+                      .join(" › "),
+                  },
+                ]
+              : []),
+            ...(entity.commodityIds?.length
+              ? [
+                  {
+                    key: "varieties",
+                    label: "涉及品种",
+                    value: entity.commodityIds
+                      .map((item) => commodityNameById(item, commodities.data))
+                      .join("、"),
+                  },
+                ]
+              : []),
+          ]}
+        />
       </DetailSection>
-      {entity.attributes && Object.entries(entity.attributes).some(([, value]) => value !== "") &&
-        <DetailSection title="属性与数值"><DetailRows items={Object.entries(entity.attributes).filter(([, value]) => value !== "").map(([key, value]) => ({ key, label: key, value }))} /></DetailSection>}
+      {typeFields.length > 0 && (
+        <DetailSection title="属性与数值">
+          <DetailRows
+            items={typeFields.map((field, index) => ({
+              key: `${field.label}-${index}`,
+              label: field.label,
+              value: field.value,
+            }))}
+          />
+        </DetailSection>
+      )}
       <DetailSection title="证据状态">
-        <DetailRows items={[
-          { key: "evidence", label: "状态", value: entity.evidenceStatus ? (evidenceStatusLabels[entity.evidenceStatus] ?? entity.evidenceStatus) : "—" },
-          { key: "source", label: "来源类型", value: entity.sourceType ? (entity.sourceType === "preset" ? "预置" : "事实") : "—" },
-        ]} />
+        <DetailRows
+          items={[
+            {
+              key: "evidence",
+              label: "状态",
+              value: entity.evidenceStatus
+                ? (evidenceStatusLabels[entity.evidenceStatus] ??
+                  entity.evidenceStatus)
+                : "—",
+            },
+            {
+              key: "source",
+              label: "来源类型",
+              value: entity.sourceType
+                ? entity.sourceType === "preset"
+                  ? "预置"
+                  : "事实"
+                : "—",
+            },
+          ]}
+        />
       </DetailSection>
-      <DetailSection title="关系" hint={`${relations.length} 条`}>
-        {relations.length ? [...new Set(relations.map((r) => r.type))].map((type) => (
-          <div className="detail-relation-group" key={type}>
-            <div className="detail-relation-type">{relationTypeInfo(type, catalogs.types.data)?.name ?? type}</div>
-            {relations.filter((r) => r.type === type).map((r) => (
-              <Button className="detail-relation-link" key={r.id} type="link" onClick={() => pushDetail({ kind: "relation", id: r.id })}>
-                {r.source?.name ?? r.sourceId} {relationTypeInfo(r.type, catalogs.types.data)?.directed === false || r.type === "合作" ? "↔" : "→"} {r.target?.name ?? r.targetId}
-              </Button>
-            ))}
-          </div>
-        )) : <p className="detail-empty">暂无关系</p>}
+      <DetailSection title="关系" hint={`${relationCount} 条`}>
+        {relationCount ? (
+          relations.map((group) => (
+            <div className="detail-relation-group" key={group.typeKey}>
+              <div className="detail-relation-type">{group.name}</div>
+              {group.items.map((relation) => (
+                <Button
+                  className="detail-relation-link"
+                  key={relation.relationId}
+                  type="link"
+                  onClick={() => pushDetail({ kind: "relation", id: relation.relationId })}
+                >
+                  {relation.direction === "incoming"
+                    ? relation.peer.canonicalName
+                    : entity.canonicalName}{" "}
+                  {relationTypeInfo(group.typeKey, catalogs.types.data)?.directed === false
+                    ? "↔" : "→"}{" "}
+                  {relation.direction === "incoming"
+                    ? entity.canonicalName
+                    : relation.peer.canonicalName}
+                </Button>
+              ))}
+            </div>
+          ))
+        ) : (
+          <p className="detail-empty">暂无关系</p>
+        )}
       </DetailSection>
-      <EvidenceFacts facts={entity.evidence} factIds={entity.factIds} preset={entity.sourceType === "preset"} />
-      {(entity.createdAt || entity.updatedAt) && <DetailSection title="本体形成过程"><DetailRows items={[
-        ...(entity.createdAt ? [{ key: "created", label: "首次写入", value: formatDate(entity.createdAt) }] : []),
-        ...(entity.updatedAt ? [{ key: "updated", label: "最近更新", value: formatDate(entity.updatedAt) }] : []),
-      ]} /></DetailSection>}
+      <EvidenceFacts
+        facts={entity.supportFacts}
+        preset={entity.sourceType === "preset"}
+      />
+      {(entity.formation?.firstWrittenAt || entity.formation?.lastUpdatedAt) && (
+        <DetailSection title="本体形成过程">
+          <DetailRows
+            items={[
+              ...(entity.formation?.firstWrittenAt
+                ? [
+                    {
+                      key: "created",
+                      label: "首次写入",
+                      value: formatDate(entity.formation?.firstWrittenAt),
+                    },
+                  ]
+                : []),
+              ...(entity.formation?.lastUpdatedAt
+                ? [
+                    {
+                      key: "updated",
+                      label: "最近更新",
+                      value: formatDate(entity.formation?.lastUpdatedAt),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </DetailSection>
+      )}
     </>
   );
 };

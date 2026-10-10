@@ -73,6 +73,7 @@ const MapCanvas = ({
   const china = useBoundaries("china");
   const {
     mode,
+    colorTheme,
     mapOverlayVisibility,
     factGeoKinds,
     level,
@@ -83,6 +84,7 @@ const MapCanvas = ({
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
+      colorTheme: s.colorTheme,
       mapOverlayVisibility: s.mapOverlayVisibility,
       factGeoKinds: s.factGeoKinds,
       level: s.level,
@@ -246,7 +248,7 @@ const MapCanvas = ({
             else setCamera(next);
           }}
           onError={(e) => setGpuError(e.message)}
-          getTooltip={getMapTooltip}
+          getTooltip={(info) => getMapTooltip(info, colorTheme)}
         />
       )}
       {isGraph && (

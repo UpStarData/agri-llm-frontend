@@ -4,7 +4,7 @@ import { Button, Checkbox, Collapse, Space, Spin, Switch } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import type { useRelationCatalogs, useRelationQueries } from "@/hooks/useRelationQueries";
-import { relationDomainInfo } from "@/utils/relationFilters";
+import { relationColor, relationDomainInfo } from "@/utils/relationFilters";
 import MapControlSettings from "@/components/MapControlSettings";
 interface IProps {
   count: ReturnType<typeof useRelationQueries>["count"];
@@ -63,7 +63,7 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
                 className={`overview-metric${index === 0 ? " relation-overview-primary" : ""}`}
                 key={label}
               >
-                <span className="overview-count">{value ?? "—"}</span>
+                <span className={`overview-count${index > 0 ? " overview-count-new" : ""}`}>{value ?? "—"}</span>
                 <span>{label}</span>
               </div>
             ))}
@@ -176,7 +176,7 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
         ) : relationGroups.map(({ domain, types }, groupIndex) => (
           <div className="drawer-filter-group" key={`${domain}-${groupIndex}`}>
             <Space size="small">
-              <span style={{ color: `rgb(${(relationDomainInfo[domain]?.color ?? [126, 160, 207]).join(",")})` }}>●</span>
+              <span style={{ color: `rgb(${relationColor("", undefined, domain).join(",")})` }}>●</span>
               <span className="filter-group-name">{relationDomainInfo[domain]?.name ?? domain}</span>
             </Space>
             <div className="drawer-filter-options">

@@ -1,3 +1,4 @@
+import { ECOLOGY_THEME as eco, geoThemeColor, rgba } from "@/utils/ecologyTheme";
 import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -71,6 +72,7 @@ export function useMapLayers({
     highlightedEntityId,
     relationGlow,
     select,
+    selection,
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
@@ -82,6 +84,7 @@ export function useMapLayers({
       highlightedEntityId: s.highlightedEntityId,
       relationGlow: s.relationGlow,
       select: s.select,
+      selection: s.selection,
     })),
   );
   const [influencePhase, setInfluencePhase] = useState(0);
@@ -149,6 +152,7 @@ export function useMapLayers({
         world: flatWorldBoundaries,
         china: china,
         points,
+        selectedFactId: selection?.kind === "fact" ? selection.id : undefined,
         flatWorld,
         level,
         regionId,
@@ -172,6 +176,7 @@ export function useMapLayers({
       flatWorldBoundaries,
       china,
       points,
+      selection,
       flatWorld,
       isGlobe,
       level,
@@ -219,6 +224,7 @@ export function useMapLayers({
             project: (position) => viewport.project(position),
             select,
             relationTypes,
+            colorTheme,
           })
         : [],
     [
@@ -240,6 +246,7 @@ export function useMapLayers({
       viewport,
       select,
       relationTypes,
+      colorTheme,
     ],
   );
   const flowLayer = useMemo(
@@ -264,20 +271,25 @@ export function useMapLayers({
           flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint,
         getRadius: 7,
         radiusUnits: "pixels",
-        getFillColor: (point) => geoColors[point.kind],
+        getFillColor: (point) => colorTheme === "light" ? rgba(geoThemeColor(point.kind), 235) : geoColors[point.kind],
+        stroked: colorTheme === "light",
+        getLineColor: rgba(eco.panel, 240),
+        getLineWidth: (point) => point.kind === "port" || point.kind === "airport" ? 2 : 0,
+        lineWidthUnits: "pixels",
+        updateTriggers: { getFillColor: colorTheme, getPosition: flatWorld },
       }),
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe],
+    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe, colorTheme],
   );
   const influenceLayers = useMemo(
     () =>
       mode === "fact" && mapOverlayVisibility.influence
-        ? createInfluenceLayers(points ?? [], influencePhase, flatWorld)
+        ? createInfluenceLayers(points ?? [], influencePhase, flatWorld, colorTheme)
         : [],
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe],
+    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe, colorTheme],
   );
   return [
     ...baseLayers,

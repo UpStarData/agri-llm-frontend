@@ -1,9 +1,11 @@
+import { ECOLOGY_THEME as eco } from "./ecologyTheme";
+import type { ColorTheme } from "@/types";
 import type { PickingInfo } from "@deck.gl/core";
 import type { FactPoint } from "@/api/fact";
 import { formatDate } from "./date";
 const regionNames = new Intl.DisplayNames(["zh-CN"], { type: "region" });
 
-export function getMapTooltip(info: PickingInfo) {
+export function getMapTooltip(info: PickingInfo, colorTheme: ColorTheme = "dark") {
   const { object, layer } = info;
   if (!object || !layer) return null;
   let text: string | undefined;
@@ -38,6 +40,7 @@ export function getMapTooltip(info: PickingInfo) {
           backgroundColor: "rgba(15, 28, 34, 0.94)",
           boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
           color: "#f0f8f8",
+          ...(colorTheme === "light" ? { border: `1px solid ${eco.border}`, backgroundColor: eco.panel, color: eco.text, boxShadow: eco.shadow } : {}),
           fontSize: "12px",
           lineHeight: "1.5",
         },

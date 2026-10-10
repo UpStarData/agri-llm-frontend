@@ -1,11 +1,13 @@
+import { ECOLOGY_THEME as eco, entityThemeColor, isLogisticsHub, rgba } from "./ecologyTheme";
 import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
-import type { Entity, Relation, Position, Selection } from "@/types";
+import type { ColorTheme, Entity, Relation, Position, Selection } from "@/types";
 import { relationColor, relationTypeInfo } from "./relationFilters";
 import { flattenWorldPosition } from "./map";
 import type { RelationTypeCatalog } from "@/api/relation";
 
 interface IOptions {
+  colorTheme?: ColorTheme;
   entities: Entity[];
   relations: Relation[];
   level: string;
@@ -115,6 +117,7 @@ const at = (path: number[][], phase: number) => {
 };
 export const createRelationLayers = (options: IOptions): Layer[] => {
   const {
+    colorTheme = "dark",
     entities,
     relations,
     level,
@@ -130,6 +133,7 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     project,
     select,
   } = options;
+  const light = colorTheme === "light";
   const focus = new Set(focusEntityIds);
   const byId = new Map(entities.map((e) => [e.id, e]));
   const neighbors = new Set([highlightedEntityId]);
@@ -210,15 +214,16 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       !highlightedEntityId ||
       relation.sourceId === highlightedEntityId ||
       relation.targetId === highlightedEntityId;
+    const glowing = glowingRelationIds.includes(relation.id);
+    const priority = important || glowing || Boolean(highlightedEntityId && focused);
     const color: [number, number, number, number] = [
       ...relationColor(
         relation.type,
         options.relationTypes,
         relation.colorDomain,
       ),
-      focused ? 210 : 45,
+      light ? (focused ? (priority ? 230 : 165) : 40) : (focused ? 210 : 45),
     ];
-    const glowing = glowingRelationIds.includes(relation.id);
     return [
       {
         ...relation,
@@ -279,6 +284,7 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       getPath: (d) => d.path,
       getColor: (d) => d.color,
       getWidth: (d) => d.width,
+      updateTriggers: { getColor: [colorTheme, highlightedEntityId, focusEntityIds, glowingRelationIds] },
       widthUnits: "pixels",
       widthMinPixels: 2,
       onClick: ({ object }) => {
@@ -316,14 +322,17 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       },
       updateTriggers: {
         getPosition: flatWorld,
-        getFillColor: [highlightedEntityId, glowingEntityIds, relations],
-        getLineColor: highlightedEntityId,
+        getFillColor: [colorTheme, highlightedEntityId, glowingEntityIds, relations],
+        getLineColor: [colorTheme, highlightedEntityId],
+        getRadius: [colorTheme, highlightedEntityId],
+        getLineWidth: [colorTheme, highlightedEntityId],
       },
       pickable: true,
       getPosition: (e) => transform(e.position!),
-      getRadius: 6,
+      getRadius: (e) => light ? (e.id === highlightedEntityId ? 9 : isLogisticsHub(e) ? 7 : 5) : 6,
       radiusUnits: "pixels",
       getFillColor: (e) =>
+        light ? rgba(entityThemeColor(e), !highlightedEntityId || neighbors.has(e.id) ? 245 : 60) :
         glowingEntityIds.includes(e.id)
           ? [255, 236, 169, 255]
           : [
@@ -334,11 +343,12 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
             ],
       stroked: true,
       getLineColor: (e) =>
+        light ? (e.id === highlightedEntityId ? rgba(eco.selected, 140) : isLogisticsHub(e) ? rgba(eco.panel, !highlightedEntityId || neighbors.has(e.id) ? 245 : 60) : rgba(eco.panel, 0)) :
         e.id === highlightedEntityId
           ? [255, 255, 255, 255]
           : [239, 185, 102, 0],
       lineWidthUnits: "pixels",
-      getLineWidth: 2,
+      getLineWidth: (e) => light ? (e.id === highlightedEntityId ? 5 : isLogisticsHub(e) ? 2 : 0) : 2,
       onClick: ({ object }) => {
         if (object) select({ kind: "entity", id: object.id });
       },

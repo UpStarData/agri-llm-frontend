@@ -13,12 +13,10 @@ import {
 import type {
   EntityCategoryCatalog,
   GraphEnvelope,
-  RelationDetailResponse,
   RelationGraph,
 } from "@/api/relation";
 import { ApiError } from "@/api/request";
 import type { FactView } from "@/api/fact";
-import type { Relation } from "@/types";
 import { useDashboardStore } from "@/store";
 
 const ENTITY_PAGE_SIZE = 30;
@@ -32,6 +30,7 @@ export const relationGraphForView = (response: GraphEnvelope): RelationGraph => 
       id: node.entityId,
       name: node.canonicalName,
       type: node.categoryL2,
+      displayGroup: node.displayGroup ?? undefined,
       position: node.geoPoint,
       viewLevels: node.viewLevels,
       factIds: [],
@@ -51,37 +50,6 @@ export const relationGraphForView = (response: GraphEnvelope): RelationGraph => 
     total,
     returned,
     truncated,
-  };
-};
-
-export const relationDetailForView = (detail: RelationDetailResponse): Relation => {
-  const { source, target, typeKey } = detail.overview;
-  const evidence = (detail.supportFacts ?? []).map((fact) => ({
-    factId: fact.factId,
-    title: fact.title,
-    excerpt: fact.basis ?? undefined,
-  }));
-  return {
-    id: detail.relationId,
-    sourceId: source.entityId,
-    targetId: target.entityId,
-    type: typeKey,
-    source: { id: source.entityId, name: source.canonicalName, type: source.categoryL2 },
-    target: { id: target.entityId, name: target.canonicalName, type: target.categoryL2 },
-    directed: detail.directed,
-    colorDomain: detail.colorDomain,
-    evidenceStatus: detail.evidenceStatus,
-    sourceType: detail.sourceType,
-    evidence,
-    factIds: evidence.map((fact) => fact.factId),
-    supportFactCount: evidence.length,
-    createdAt: detail.formation?.firstWrittenAt,
-    updatedAt: detail.formation?.lastUpdatedAt,
-    attributes: Object.fromEntries(
-      (detail.typeFields ?? [])
-        .filter((field) => field.value !== null)
-        .map((field) => [field.label, field.value as string | number]),
-    ),
   };
 };
 
@@ -213,7 +181,7 @@ export const useRelationDetail = (id?: string) =>
     queryFn: async () => {
       const detail = (await getRelation(id!)).data;
       if (!detail) throw new ApiError("关系详情为空");
-      return relationDetailForView(detail);
+      return detail;
     },
     enabled: Boolean(id),
     meta: { notifyOnError: true },

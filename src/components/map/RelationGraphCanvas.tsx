@@ -1,3 +1,4 @@
+import { ECOLOGY_THEME as eco, entityThemeColor } from "@/utils/ecologyTheme";
 import { useEffect, useRef } from "react";
 import { Empty } from "antd";
 import { init, use as registerCharts } from "echarts/core";
@@ -38,6 +39,7 @@ const RelationGraphCanvas = ({
       backgroundColor: "transparent",
       animationDuration: 350,
       tooltip: {
+        ...(theme === "light" ? { backgroundColor: eco.panel, borderColor: eco.border, textStyle: { color: eco.text } } : {}),
         formatter: (params: { data?: { name?: string } }) =>
           params.data?.name ?? "",
       },
@@ -52,7 +54,7 @@ const RelationGraphCanvas = ({
           label: {
             show: true,
             position: "bottom",
-            color: theme === "dark" ? "#d7eeeb" : "#24484d",
+            color: theme === "dark" ? "#d7eeeb" : eco.text,
             fontSize: 12,
           },
           emphasis: { focus: "adjacency" },
@@ -60,7 +62,7 @@ const RelationGraphCanvas = ({
             id: entity.id,
             name: entity.name,
             symbolSize: 16,
-            itemStyle: { color: "#efb966" },
+            itemStyle: { color: theme === "light" ? entityThemeColor(entity) : "#efb966" },
           })),
           links: relations
             .filter(

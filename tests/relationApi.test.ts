@@ -11,7 +11,7 @@ import {
   getRelationGraph,
   getRelationGraphPoints,
 } from "../src/api/relation";
-import { relationDetailForView, relationGraphForView } from "../src/hooks/useRelationQueries";
+import { relationGraphForView } from "../src/hooks/useRelationQueries";
 
 const response = {
   code: 0,
@@ -105,7 +105,7 @@ describe("图谱接口契约", () => {
   });
 });
 
-describe("关系详情接口映射", () => {
+describe("关系详情接口契约", () => {
   const detail = {
     relationId: "r:1",
     overview: {
@@ -121,34 +121,21 @@ describe("关系详情接口映射", () => {
     formation: { firstWrittenAt: "2026-09-21", lastUpdatedAt: "2026-10-09" },
     typeFields: [{ label: "数量", value: "100 吨" }],
   };
-  it("将 overview/supportFacts/formation 映射到详情展示字段", async () => {
+  it("保留 overview/supportFacts/formation 接口字段", async () => {
     request.mockResolvedValue({ code: 0, data: detail });
     const result = await getRelation("r:1");
     expect(result.data).toBe(detail);
-    expect(relationDetailForView(result.data)).toMatchObject({
-      id: "r:1",
-      sourceId: "e:1",
-      targetId: "e:2",
-      type: "transports_to",
-      source: { name: "产区" },
-      target: { name: "市场" },
-      factIds: ["f1"],
-      evidence: [{ factId: "f1", title: "运输事实", excerpt: "来源说明" }],
-      createdAt: "2026-09-21",
-      updatedAt: "2026-10-09",
-      attributes: { 数量: "100 吨" },
-    });
     expect(request).toHaveBeenLastCalledWith(
       expect.objectContaining({ url: "/relations/r%3A1" }),
     );
   });
-  it("没有支撑事实和形成过程时仍能打开详情", async () => {
+  it("保留支撑事实和形成过程的空值", async () => {
     request.mockResolvedValue({
       data: { ...detail, supportFacts: null, formation: null },
     });
-    expect(relationDetailForView((await getRelation("r:1")).data)).toMatchObject({
-      factIds: [],
-      evidence: [],
+    expect((await getRelation("r:1")).data).toMatchObject({
+      supportFacts: null,
+      formation: null,
     });
   });
 });

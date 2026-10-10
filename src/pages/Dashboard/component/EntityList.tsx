@@ -50,8 +50,8 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
         columns.map((column, ci) => (
           <div className="layer-record-column" key={ci}>
             {column.map((entity, i) => (
-              <button
-                type="button"
+              <div
+                // type="button"
                 key={entity.entityId}
                 className={`layer-record${open && selected?.kind === "entity" && selected.id === entity.entityId ? " is-selected" : ""}`}
                 style={{ order: i * 2 + ci }}
@@ -65,8 +65,8 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                   )}
                 </Tag>
                 <div className="record-title">{entity.canonicalName}</div>
-                {(entity.geo?.regionPath?.length ||
-                  entity.commodityIds?.length) && (
+                {entity.geo?.regionPath?.length ||
+                entity.commodityIds?.length ? (
                   <div className="record-meta">
                     {[
                       entity.geo?.regionPath?.at(-1)?.name,
@@ -77,7 +77,7 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                       .filter(Boolean)
                       .join(" / ")}
                   </div>
-                )}
+                ) : null}
                 {entity.summary && (
                   <div className="record-description">{entity.summary}</div>
                 )}
@@ -97,7 +97,8 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                   <span className="record-meta">
                     {[
                       entity.evidenceStatus &&
-                        (evidenceStatusLabels[entity.evidenceStatus] ?? entity.evidenceStatus),
+                        (evidenceStatusLabels[entity.evidenceStatus] ??
+                          entity.evidenceStatus),
                       entity.sourceType &&
                         (entity.sourceType === "preset"
                           ? "预置"
@@ -114,13 +115,11 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
                     最近更新：{formatDate(entity.updatedAt)}
                   </span>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         ))
-      ) : list.isError && !noCategories ? (
-        null
-      ) : (
+      ) : list.isError && !noCategories ? null : (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="暂无符合条件的本体"
