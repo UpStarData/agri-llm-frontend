@@ -1,4 +1,3 @@
-import type { Entity, Relation } from "@/types";
 import type {
   EntityCategoryCatalog,
   RelationTypeCatalog,
@@ -36,40 +35,3 @@ export const entityCategoryName = (
   catalog?.categories
     .flatMap((group) => group.children)
     .find((item) => item.id === type)?.name ?? type;
-export const filterRelationGraph = (
-  entities: Entity[],
-  relations: Relation[],
-  excludedCategories: string[],
-  excludedRelations: string[],
-  varieties: string[],
-  keyword = "",
-) => {
-  const excludedCategoryNames = new Set(excludedCategories);
-  const excludedRelationNames = new Set(excludedRelations);
-  // 品种依据关系预存 involved_varieties，禁止在前端推断多跳关联。
-  const varietyRelations = relations.filter(
-    (r) =>
-      !varieties.length ||
-      r.involved_varieties?.some((id) => varieties.includes(id)),
-  );
-  const varietyEntities = new Set(
-    varietyRelations.flatMap((r) => [r.sourceId, r.targetId]),
-  );
-  const nodes = entities.filter(
-    (e) =>
-      !excludedCategoryNames.has(e.type) &&
-      (!varieties.length ||
-        varietyEntities.has(e.id) ||
-        varieties.includes(e.id)) &&
-      (!keyword ||
-        e.name.toLocaleLowerCase().includes(keyword.toLocaleLowerCase())),
-  );
-  const ids = new Set(nodes.map(({ id }) => id));
-  const edges = varietyRelations.filter(
-    (r) =>
-      !excludedRelationNames.has(r.type) &&
-      ids.has(r.sourceId) &&
-      ids.has(r.targetId),
-  );
-  return { entities: nodes, relations: edges };
-};

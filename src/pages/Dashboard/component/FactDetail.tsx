@@ -5,6 +5,7 @@ import { formatDate } from "@/utils/date";
 import type { Entity } from "@/types";
 import { evidenceStatusLabels } from "@/utils/factFilters";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
+import TypeFieldsSection from "./TypeFieldsSection";
 
 interface IProps {
   id: string;
@@ -123,6 +124,7 @@ const FactDetail = ({ id }: IProps) => {
           ]}
         />
       </DetailSection>
+      <TypeFieldsSection fields={fact.typeFields} />
       {/* <DetailSection
         title="证据与来源"
         hint={`${fact.evidenceCount ?? sources.length} 条`}
@@ -161,6 +163,8 @@ const FactDetail = ({ id }: IProps) => {
           <p className="detail-empty">暂无可展示的来源详情</p>
         )}
       </DetailSection> */}
+
+      
       <DetailSection title="事实形成过程">
         <DetailRows
           items={[

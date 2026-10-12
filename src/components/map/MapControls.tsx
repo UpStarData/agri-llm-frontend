@@ -9,7 +9,6 @@ import {
   MinusOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import FactMapTools from "./FactMapTools";
 import RelationMapTools from "./RelationMapTools";
@@ -34,20 +33,10 @@ const MapControls = ({
   onZoom,
   onReset,
 }: IProps) => {
-  const { mode, visibility } = useDashboardStore(
-    useShallow((s) => ({ mode: s.mode, visibility: s.mapControlVisibility })),
-  );
-  const visible = Object.entries(visibility).some(
-    ([key, value]) =>
-      value &&
-      (mode === "fact"
-        ? !["graph", "ports"].includes(key)
-        : !["influence", "video", "reset"].includes(key)),
-  );
-  if (!visible) return null;
+  const mode = useDashboardStore((s) => s.mode);
   return (
     <div className="map-controls" aria-label="地图操作">
-      {mode === "relation" && visibility.globe && (
+      {mode === "relation" && (
         <>
           <Tooltip title="3D 地图" placement="left">
             <Button
@@ -71,7 +60,7 @@ const MapControls = ({
           </Tooltip>
         </>
       )}
-      {mode === "relation" && visibility.graph && (
+      {mode === "relation" && (
         <Tooltip title="图谱" placement="left">
           <Button
             type={isGraph ? "primary" : "text"}
@@ -83,7 +72,7 @@ const MapControls = ({
           />
         </Tooltip>
       )}
-      {mode === "fact" && visibility.globe && (
+      {mode === "fact" && (
         <Button
           type="text"
           shape="circle"
@@ -92,34 +81,30 @@ const MapControls = ({
           onClick={onToggleGlobe}
         />
       )}
-      {visibility.zoom && (
-        <>
-          <Button
-            type="text"
-            shape="circle"
-            icon={<PlusOutlined />}
-            aria-label="放大地图"
-            onClick={() => onZoom(1)}
-          />
-          <Button
-            type="text"
-            shape="circle"
-            icon={<MinusOutlined />}
-            aria-label="缩小地图"
-            onClick={() => onZoom(-1)}
-          />
-        </>
-      )}
-      {visibility.fullscreen && (
+      <>
         <Button
           type="text"
           shape="circle"
-          icon={isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
-          aria-label={isFullscreen ? "退出全屏" : "展开全屏"}
-          onClick={onFullscreen}
+          icon={<PlusOutlined />}
+          aria-label="放大地图"
+          onClick={() => onZoom(1)}
         />
-      )}
-      {mode === "fact" && visibility.reset && (
+        <Button
+          type="text"
+          shape="circle"
+          icon={<MinusOutlined />}
+          aria-label="缩小地图"
+          onClick={() => onZoom(-1)}
+        />
+      </>
+      <Button
+        type="text"
+        shape="circle"
+        icon={isFullscreen ? <CompressOutlined /> : <ExpandOutlined />}
+        aria-label={isFullscreen ? "退出全屏" : "展开全屏"}
+        onClick={onFullscreen}
+      />
+      {mode === "fact" && (
         <Button
           type="text"
           shape="circle"

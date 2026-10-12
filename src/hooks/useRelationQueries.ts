@@ -14,6 +14,7 @@ import type {
   EntityCategoryCatalog,
   GraphEnvelope,
   RelationGraph,
+  RelationTypeCatalog,
 } from "@/api/relation";
 import { ApiError } from "@/api/request";
 import type { FactView } from "@/api/fact";
@@ -74,17 +75,22 @@ export const useRelationCatalogs = () => {
   return { categories, types };
 };
 
-export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
-  const { mode, varieties, excluded, keyword, revision, level, regionId } =
+export const useRelationQueries = (
+  categories?: EntityCategoryCatalog,
+  types?: RelationTypeCatalog,
+) => {
+  const { mode, varieties, excluded, excludedTypes, keyword, revision, level, regionId, crossRegion } =
     useDashboardStore(
       useShallow((s) => ({
         mode: s.mode,
         varieties: s.factFilters.varieties,
         excluded: s.excludedFilterIds.relation,
+        excludedTypes: s.relationFilters.excludedTypes,
         keyword: s.relationFilters.keyword,
         revision: s.relationRevision,
         level: s.level,
         regionId: s.regionId,
+        crossRegion: s.relationFilters.crossRegion,
       })),
     );
 
@@ -98,12 +104,14 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
       ) ?? []
     ).filter((id) => !excluded.includes(id)),
     commodityIds,
+    relationTypeIds: (types?.types ?? [])
+      .map((type) => type.id)
+      .filter((id) => !excludedTypes.includes(id)),
     q: keyword || undefined,
   };
 
-  const graphRequest = {
-    commodityIds,
-  };
+  const graphRequest = filters;
+  const enabled = active && Boolean(categories) && Boolean(types);
   const view: FactView =
     level === "province" && regionId === "430000"
       ? "hunan"
@@ -114,22 +122,26 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
   const graph = useQuery({
     queryKey: ["relation", "graph", graphRequest, revision],
     queryFn: async () => relationGraphForView(await getRelationGraph(graphRequest)),
-    enabled: active,
-    staleTime: Infinity,
+    enabled,
+    staleTime: 0,
     meta: { notifyOnError: true },
   });
 
   const map = useQuery({
-    queryKey: ["relation", "graph-points", view, graphRequest, revision],
+    queryKey: ["relation", "graph-points", view, crossRegion, graphRequest, revision],
     queryFn: async () =>
-      relationGraphForView(await getRelationGraphPoints({ ...graphRequest, view })),
-    enabled: active,
-    staleTime: Infinity,
+      relationGraphForView(await getRelationGraphPoints({
+        ...graphRequest,
+        view,
+        includeCrossRegion: crossRegion,
+      })),
+    enabled,
+    staleTime: 0,
     meta: { notifyOnError: true },
   });
 
   const list = useInfiniteQuery({
-    queryKey: ["relation", "list", filters],
+    queryKey: ["relation", "list", filters, revision],
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const response = await getEntities({
@@ -137,6 +149,8 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
         page: pageParam,
         pageSize: ENTITY_PAGE_SIZE,
       });
+      if ((response.code !== undefined && response.code !== 0) || !response.data)
+        throw new ApiError(response.message || "本体列表请求失败");
       return { ...response.data, items: response.data.items || [] };
     },
     getNextPageParam: (page, pages) => {
@@ -145,8 +159,8 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
         ? page.page + 1
         : undefined;
     },
-    enabled: active && Boolean(categories) && filters.categoryIds.length > 0,
-    staleTime: Infinity,
+    enabled,
+    staleTime: 0,
     meta: { notifyOnError: true },
   });
 
@@ -161,9 +175,8 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
     graph,
     map,
     list,
+    listScope: JSON.stringify([filters, revision]),
     count,
-    commodityIds,
-    noCategories: Boolean(categories) && filters.categoryIds.length === 0,
   };
 };
 

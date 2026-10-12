@@ -1,5 +1,5 @@
 import { ECOLOGY_THEME as eco, entityThemeColor, isLogisticsHub, rgba } from "./ecologyTheme";
-import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import type { ColorTheme, Entity, Relation, Position, Selection } from "@/types";
 import { relationColor, relationTypeInfo } from "./relationFilters";
@@ -10,9 +10,6 @@ interface IOptions {
   colorTheme?: ColorTheme;
   entities: Entity[];
   relations: Relation[];
-  level: string;
-  regionId?: string;
-  crossRegion: boolean;
   flatWorld: boolean;
   isGlobe: boolean;
   longitude: number;
@@ -30,32 +27,13 @@ interface IOptions {
 }
 const radians = Math.PI / 180;
 const validPosition = (p: Position | null): p is Position =>
-  Boolean(p && p.every(Number.isFinite));
-const viewFor = (level: string, regionId?: string) =>
-  level === "province" && regionId === "430000"
-    ? "hunan"
-    : level === "world" || (level === "country" && regionId !== "CN")
-      ? "global"
-      : "china";
-const inRegion = (entity: Entity, level: string, regionId?: string) => {
-  if (entity.viewLevels)
-    return entity.viewLevels.includes(viewFor(level, regionId));
-  return (
-    level === "world" ||
-    entity.regionPath?.some(
-      ({ code }) =>
-        code === regionId ||
-        (regionId === "CN" && code === "CHN") ||
-        (regionId === "430000" && code === "CN-HN"),
-    ) === true
-  );
-};
+  Boolean(p && p.length === 2 && p.every(Number.isFinite));
 const vector = ([lng, lat]: Position) => [
   Math.cos(lat * radians) * Math.cos(lng * radians),
   Math.cos(lat * radians) * Math.sin(lng * radians),
   Math.sin(lat * radians),
 ];
-// 同一条大圆路径提供曲线、方向箭头与流动光点，避免三者偏离。
+// 曲线与流动光点使用同一条大圆路径，避免偏离。
 export const relationPath = (
   from: Position,
   to: Position,
@@ -120,9 +98,6 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     colorTheme = "dark",
     entities,
     relations,
-    level,
-    regionId,
-    crossRegion,
     flatWorld,
     isGlobe,
     paths,
@@ -135,7 +110,6 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
   } = options;
   const light = colorTheme === "light";
   const focus = new Set(focusEntityIds);
-  const byId = new Map(entities.map((e) => [e.id, e]));
   const neighbors = new Set([highlightedEntityId]);
   relations
     .filter(
@@ -165,17 +139,15 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     }
     return true;
   };
+  // 后端已按 view、includeCrossRegion 和业务筛选确定集合；保留外部端点。
   const nodes = entities
-    .filter(
-      (e) =>
-        validPosition(e.position) &&
-        (inRegion(e, level, regionId) || focus.has(e.id)),
-    )
+    .filter((e) => validPosition(e.position))
     .sort((a, b) =>
       (a.updatedAt ?? a.createdAt ?? "").localeCompare(
         b.updatedAt ?? b.createdAt ?? "",
       ),
     );
+  const byId = new Map(nodes.map((e) => [e.id, e]));
   const edges = relations.flatMap((relation) => {
     const from = byId.get(relation.sourceId),
       to = byId.get(relation.targetId);
@@ -186,29 +158,15 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       !validPosition(to.position)
     )
       return [];
-    const fromInside = inRegion(from, level, regionId) && onScreen(from),
-      toInside = inRegion(to, level, regionId) && onScreen(to);
     const important = focus.has(from.id) || focus.has(to.id);
-    // 上下文重点与跨区域关系可越过地理层级；两端已先经过分类和品种筛选。
-    const scopeVisible = relation.displayLevels
-      ? relation.displayLevels.includes(viewFor(level, regionId))
-      : level === "world" ||
-        (level === "country" &&
-          ["china", "hunan"].includes(relation.scopeLayer ?? "")) ||
-        (level === "province" && relation.scopeLayer === "hunan");
-    if (
-      !important &&
-      !(scopeVisible && fromInside && toInside) &&
-      !(crossRegion && fromInside !== toInside)
-    )
-      return [];
     if (isGlobe && !onScreen(from) && !onScreen(to)) return [];
     const path = paths.get(relation.id);
     if (!path) return [];
     if (project) {
       const a = project(path[0]),
         b = project(path.at(-1)!);
-      if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 8) return [];
+      const pixelLength = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (!Number.isFinite(pixelLength) || pixelLength < 8) return [];
     }
     const focused =
       !highlightedEntityId ||
@@ -237,27 +195,14 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
         path,
         color,
         width:
-          ((relation.supportFactCount ?? relation.factIds?.length ?? 0) >= 5
+          (relation.supportFactCount ?? relation.factIds?.length ?? 0) >= 5
             ? 3
             : (relation.supportFactCount ?? relation.factIds?.length ?? 0) >= 2
               ? 2
-              : 1) + (glowing ? 1 : 0),
+              : 1,
       },
     ];
   });
-  const arrows = edges
-    .filter((edge) => edge.directed)
-    .map((edge) => {
-      const p = at(edge.path, 0.68),
-        next = at(edge.path, 0.7);
-      const a = project?.(p),
-        b = project?.(next);
-      return {
-        position: p,
-        color: edge.color,
-        angle: a && b ? -Math.atan2(b[1] - a[1], b[0] - a[0]) / radians : 0,
-      };
-    });
   return [
     new PathLayer({
       id: "real-relations",
@@ -286,28 +231,11 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       getWidth: (d) => d.width,
       updateTriggers: { getColor: [colorTheme, highlightedEntityId, focusEntityIds, glowingRelationIds] },
       widthUnits: "pixels",
-      widthMinPixels: 2,
+      widthMinPixels: 1,
       onClick: ({ object }) => {
         if (object) select({ kind: "relation", id: object.id });
       },
     }),
-    ...(arrows.length
-      ? [
-          new TextLayer({
-            id: "relation-arrows",
-            data: arrows,
-            pickable: false,
-            getPosition: (d) => d.position,
-            getText: () => "▸",
-            getSize: 15,
-            sizeUnits: "pixels",
-            characterSet: "▸",
-            getColor: (d) => d.color,
-            getAngle: (d) => d.angle,
-            billboard: true,
-          }),
-        ]
-      : []),
     new ScatterplotLayer<Entity>({
       id: "real-entities",
       data: nodes,

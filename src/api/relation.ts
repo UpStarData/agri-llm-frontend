@@ -1,5 +1,5 @@
 import { request } from "./request";
-import type { ApiResponse } from "./fact";
+import type { ApiResponse, DetailTypeField } from "./fact";
 import type { Entity, Relation } from "../types";
 import type { FactView } from "./fact";
 
@@ -28,6 +28,8 @@ export interface RelationFilters {
   /** 分类节点 UUID v7 数组，值取目录 children[].id */
   categoryIds: string[];
   commodityIds: string[];
+  /** 关系类型 UUID v7 数组，值取目录 types[].id；无效值返回 51 */
+  relationTypeIds: string[];
   q?: string;
 }
 export interface EntityPage {
@@ -42,15 +44,17 @@ export interface EntityListItem {
   canonicalName: string;
   category: { categoryId: string; displayGroup: string | null };
   geo?: {
-    regionPath?: { code?: string; name: string; level?: string }[];
+    /** 所在地行政层级链；null 表示未解析。 */
+    regionPath?: { code?: string; name: string; level?: string }[] | null;
     geoPoint?: [number, number] | null;
     geoPrecision?: string;
-    viewLevels?: string[];
-  };
+    /** 可见视角：global / china / hunan。 */
+    viewLevels?: FactView[] | null;
+  } | null;
   commodityIds?: string[];
-  typeFields?: { label: string; value: string | number }[];
+  typeFields?: { label: string; value: string | number | null }[] | null;
   summary?: string;
-  relationCount?: number;
+  relationCount?: number | null;
   evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";
   sourceType?: string;
   updatedAt?: string;
@@ -79,7 +83,7 @@ export interface GraphRequest {
   categoryIds?: string[];
   commodityIds?: string[];
   /** 关系类型 ID 数组，值取目录 types[].id（UUID v7） */
-  relationTypes?: string[];
+  relationTypeIds?: string[];
   evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";
   sourceType?: "fact" | "preset";
   coldStart?: boolean;
@@ -87,6 +91,8 @@ export interface GraphRequest {
 }
 export interface GraphPointsRequest extends GraphRequest {
   view: FactView;
+  /** 跨区域默认开启；后端同时返回跨区域关系及有坐标的外部端点。 */
+  includeCrossRegion: boolean;
 }
 export interface GraphNode {
   entityId: string;
@@ -148,7 +154,7 @@ export const getRelationTypes = () =>
 export const getEntities = (
   data: RelationFilters & { page: number; pageSize: number },
 ) =>
-  request<ApiResponse<EntityPage>>({
+  request<ApiResponse<EntityPage> & { code?: number; message?: string }>({
     url: "/entities",
     method: "POST",
     data,
@@ -173,7 +179,7 @@ export interface RelationDetailResponse {
   };
   directed?: boolean;
   colorDomain?: string;
-  typeFields?: { label: string; value: string | number | null }[];
+  typeFields?: DetailTypeField[] | null;
   evidenceStatus?: string;
   sourceType?: "fact" | "preset";
   supportFacts?:
@@ -215,7 +221,8 @@ export interface EntityDetailResponse {
     viewLevels?: FactView[];
   } | null;
   commodityIds?: string[] | null;
-  typeFields?: { label: string; value: string | number | null }[] | null;
+  commodities?: { id: string; name: string }[] | null;
+  typeFields?: DetailTypeField[] | null;
   summary?: string | null;
   media?: unknown[] | null;
   evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";

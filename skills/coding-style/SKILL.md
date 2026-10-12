@@ -1,6 +1,6 @@
 ---
 name: coding-style
-description: Apply this project's React and Ant Design coding conventions when creating or revising page and component code.
+description: Apply this project's React, Ant Design, and Less coding conventions when creating or revising pages, components, and styles.
 ---
 
 # 项目编码规范
@@ -80,3 +80,7 @@ src/pages/SomePage/
 
 - 直接展示接口返回的错误文案，不在前端把业务错误码翻成中文
 - 不改 `src/api/request.ts` 的统一拦截逻辑
+
+## 11. Less 样式组织
+
+Less 样式按模块集中组织；同一作用域的选择器统一声明，子元素、伪类及状态使用嵌套。主题和响应式规则就近维护，避免跨模块合并无关选择器。

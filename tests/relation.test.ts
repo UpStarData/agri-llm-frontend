@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  filterRelationGraph,
   relationColor,
+  relationDomainInfo,
 } from "../src/utils/relationFilters";
 import {
   createRelationLayers as buildRelationLayers,
@@ -90,8 +90,6 @@ const edges: Relation[] = [
 const options = {
   entities: nodes,
   relations: edges,
-  level: "world",
-  crossRegion: true,
   flatWorld: false,
   isGlobe: false,
   longitude: 105,
@@ -104,105 +102,30 @@ const edgeData = (layers: ReturnType<typeof createRelationLayers>) =>
   layers.find((l) => l.id === "real-relations")!.props.data as Relation[];
 
 describe("关联筛选与地图规则", () => {
-  it("目录 typeId 能筛选返回的本体与关系", () => {
-    const types = {
+  it("目录 typeId 使用目录颜色域", () => {
+    expect(relationColor(SUPPLIES_TYPE_ID, {
       version: "RT-v1",
-      types: [
-        {
-          id: SUPPLIES_TYPE_ID,
-          name: "供应",
-          colorDomain: "production_supply",
-          directed: true,
-          sourceCategoryIds: [],
-          targetCategoryIds: [],
-        },
-      ],
-    };
-    expect(relationColor(SUPPLIES_TYPE_ID, types)).toEqual([77, 150, 106]);
-    expect(
-      filterRelationGraph(
-        nodes,
-        edges,
-        [MARKET_CATEGORY_ID],
-        [],
-        [],
-        "",
-      ).entities.some((entity) => entity.id === "hx"),
-    ).toBe(false);
-    expect(
-      filterRelationGraph(
-        nodes,
-        edges,
-        [],
-        [SUPPLIES_TYPE_ID],
-        [],
-        "",
-      ).relations,
-    ).toEqual([]);
+      types: [{ id: SUPPLIES_TYPE_ID, name: "供应", colorDomain: "production_supply",
+        directed: true, sourceCategoryIds: [], targetCategoryIds: [] }],
+    })).toEqual([77, 150, 106]);
   });
-  it("关闭关系类型不移除本体", () => {
-    const result = filterRelationGraph(nodes, edges, [], [SUPPLIES_TYPE_ID], []);
-    expect(result.entities).toEqual(nodes);
-    expect(result.relations).toEqual([]);
+  it("直接显示后端筛选结果，保留跨区域外部端点及其真实层级", () => {
+    const entities = nodes.map((node): Entity => ({
+      ...node, viewLevels: node.id === "cl" ? ["global"] : ["global", "china", "hunan"],
+    }));
+    const layers = createRelationLayers({ ...options, entities,
+      relations: edges.map((edge) => ({ ...edge, displayLevels: ["global"] })),
+    });
+    expect(edgeData(layers).map((edge) => edge.id)).toEqual(["cl-hx", "hn-hx"]);
+    expect((layers.find((layer) => layer.id === "real-entities")!.props.data as Entity[])
+      .map((node) => node.id)).toEqual(["cl", "hx", "hn"]);
+    // 关闭跨区域后的响应只含本地节点与线；重点本体不能恢复后端已排除的数据。
+    const local = createRelationLayers({ ...options, entities: entities.filter((node) => node.id !== "cl"),
+      relations: [edges[1]], focusEntityIds: ["cl"],
+    });
+    expect(edgeData(local).map((edge) => edge.id)).toEqual(["hn-hx"]);
   });
-  it("品种从 involved_varieties 取关系端点，并保留无坐标品种自身", () => {
-    const result = filterRelationGraph(nodes, edges, [], [], ["cherry"]);
-    expect(result.entities.map((n) => n.id)).toEqual(["cherry", "cl", "hx"]);
-    expect(result.relations.map((e) => e.id)).toEqual(["cl-hx"]);
-    const filtered = filterRelationGraph(
-      nodes,
-      edges,
-      [MARKET_CATEGORY_ID],
-      [],
-      ["cherry"],
-    );
-    expect(filtered.entities.some((e) => e.id === "hx")).toBe(false);
-    expect(filtered.relations).toEqual([]);
-  });
-  it("湖南仅本地线，跨区域开启后允许智利到湖南，分类仍优先", () => {
-    expect(
-      edgeData(
-        createRelationLayers({
-          ...options,
-          level: "province",
-          regionId: "430000",
-          crossRegion: false,
-        }),
-      ).map((e) => e.id),
-    ).toEqual(["hn-hx"]);
-    expect(
-      edgeData(
-        createRelationLayers({
-          ...options,
-          level: "province",
-          regionId: "430000",
-        }),
-      ).map((e) => e.id),
-    ).toEqual(["cl-hx", "hn-hx"]);
-    const filtered = filterRelationGraph(nodes, edges, [MARKET_CATEGORY_ID], [], []);
-    expect(
-      edgeData(
-        createRelationLayers({
-          ...options,
-          ...filtered,
-          level: "province",
-          regionId: "430000",
-        }),
-      ),
-    ).toEqual([]);
-  });
-  it("重点越过地理层级；小于8px和无坐标关系不强行上图", () => {
-    expect(
-      edgeData(
-        createRelationLayers({
-          ...options,
-          level: "province",
-          regionId: "430000",
-          crossRegion: false,
-          focusEntityIds: ["cl"],
-        }),
-      ),
-    ).toHaveLength(2);
+  it("先定节点再定线，缺失或无坐标端点及小于8px的关系不强行上图", () => {
     expect(
       edgeData(createRelationLayers({ ...options, project: () => [0, 0] })),
     ).toEqual([]);
@@ -214,6 +137,29 @@ describe("关联筛选与地图规则", () => {
         }),
       ),
     ).toEqual([]);
+    expect(edgeData(createRelationLayers({ ...options, entities: nodes.filter((node) => node.id !== "cl"),
+      focusEntityIds: ["cl"],
+    })).map((edge) => edge.id)).toEqual(["hn-hx"]);
+  });
+  it.each([7.99, 8, 8.01])("端点投影距离 %s px 遵守严格小于8px阈值", (distance) => {
+    const layers = createRelationLayers({ ...options, relations: [edges[1]],
+      project: ([lng]) => [(lng - 112) * distance, 0],
+    });
+    expect(edgeData(layers)).toHaveLength(distance < 8 ? 0 : 1);
+  });
+  it("六域颜色、事实数三档线宽不被最小宽度或高亮覆盖", () => {
+    const domains = Object.keys(relationDomainInfo);
+    const counts = [0, 1, 2, 4, 5, 20];
+    const layers = createRelationLayers({ ...options, glowingRelationIds: domains,
+      relations: domains.map((colorDomain, index) => ({ ...edges[1], id: colorDomain,
+        colorDomain, supportFactCount: counts[index],
+      })),
+    });
+    const line = layers.find((layer) => layer.id === "real-relations")!;
+    const data = line.props.data as (Relation & { color: number[]; width: number })[];
+    expect(data.map((edge) => edge.color.slice(0, 3))).toEqual(domains.map((domain) => relationDomainInfo[domain].color));
+    expect(data.map((edge) => edge.width)).toEqual([1, 1, 2, 2, 3, 3]);
+    expect(line.props.widthMinPixels).toBe(1);
   });
   it("无向关系双向流动且无箭头，业务曲线可拾取，装饰不可拾取", () => {
     const layers = createRelationLayers({
@@ -231,9 +177,16 @@ describe("关联筛选与地图规则", () => {
       true,
     );
     expect(
-      createRelationLayers(options).find((l) => l.id === "relation-arrows")!
-        .props.data,
-    ).toHaveLength(2);
+      createRelationLayers(options).find((l) => l.id === "relation-arrows"),
+    ).toBeUndefined();
+  });
+  it.each([true, false])("directed=%s 的光点沿同一曲线正向或双向持续运动", (directed) => {
+    const layers = createRelationLayers({ ...options, relations: [{ ...edges[1], directed }] });
+    const path = relationPath(nodes[3].position!, nodes[2].position!, false);
+    const before = createRelationFlowLayer(layers, 0.25).props.data as { position: number[] }[];
+    const after = createRelationFlowLayer(layers, 0.75).props.data as { position: number[] }[];
+    expect(before.map((particle) => particle.position)).toEqual(directed ? [path[8]] : [path[8], path[24]]);
+    expect(after.map((particle) => particle.position)).toEqual(directed ? [path[24]] : [path[24], path[8]]);
   });
   it.each([false, true])("%s 模式点击关系线打开关系详情", (isGlobe) => {
     const selections: { kind: string; id: string }[] = [];
@@ -245,7 +198,7 @@ describe("关联筛选与地图规则", () => {
     });
     const line = layers.find((layer) => layer.id === "real-relations")!;
     expect(line.props.pickable).toBe(true);
-    expect(line.props.widthMinPixels).toBe(2);
+    expect(line.props.widthMinPixels).toBe(1);
     const edge = (line.props.data as Relation[])[0];
     expect(edge.id).toBe("hn-hx");
     line.props.onClick!({ object: edge } as never, {} as never);
@@ -291,6 +244,14 @@ describe("关联上下文与详情", () => {
   beforeEach(() =>
     useDashboardStore.setState(useDashboardStore.getInitialState(), true),
   );
+  it("跨区域默认开启，用户关闭后切换业务模式仍保留选择", () => {
+    const store = useDashboardStore.getState();
+    expect(store.relationFilters.crossRegion).toBe(true);
+    store.setRelationFilters({ crossRegion: false });
+    store.setMode("fact");
+    store.setMode("relation");
+    expect(useDashboardStore.getState().relationFilters.crossRegion).toBe(false);
+  });
   it("事实上下文进入不带入事实地域，返回恢复；同上下文不重建", () => {
     const store = useDashboardStore.getState();
     store.setFactRegion("CN", "430000");

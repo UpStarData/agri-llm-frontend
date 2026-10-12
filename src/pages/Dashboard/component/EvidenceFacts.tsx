@@ -12,7 +12,7 @@ const EvidenceFacts = ({ facts, factIds, preset }: IProps) => {
   const pushDetail = useDashboardStore((s) => s.pushDetail);
   const count = facts?.length || factIds?.length || 0;
   return (
-    <DetailSection title="证据与来源" hint={count ? `${count} 条` : undefined}>
+    <DetailSection title="支撑事实" hint={count ? `${count} 条` : undefined}>
       {preset && <p className="detail-empty">来自预置清单</p>}
       {!count && !preset && <p className="detail-empty">暂无证据事实</p>}
       {facts?.length

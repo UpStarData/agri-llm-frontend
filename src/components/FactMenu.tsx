@@ -6,7 +6,6 @@ import { useDashboardStore } from "@/store";
 import { getFactCount } from "@/api/fact";
 import type { FactTaxonomy, FactTaxonomyGroup, GeoPointKind } from "@/api/fact";
 import VarietySelect from "@/pages/Dashboard/component/VarietySelect";
-import MapControlSettings from "./MapControlSettings";
 import FilterBar from "@/components/FilterBar";
 
 const overlays: { label: string; kind: GeoPointKind }[] = [
@@ -218,7 +217,6 @@ const FactMenu = ({
           })}
         </div>
       </div>
-      <MapControlSettings />
     </>
   );
 };

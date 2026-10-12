@@ -5,7 +5,6 @@ import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import type { useRelationCatalogs, useRelationQueries } from "@/hooks/useRelationQueries";
 import { relationColor, relationDomainInfo } from "@/utils/relationFilters";
-import MapControlSettings from "@/components/MapControlSettings";
 interface IProps {
   count: ReturnType<typeof useRelationQueries>["count"];
   catalogs: ReturnType<typeof useRelationCatalogs>;
@@ -18,6 +17,7 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
     );
     return { entityGroups, entityCategoryIds };
   }, [catalogs.categories.data]);
+
   const { relationTypes, relationTypeIds, relationGroups } = useMemo(() => {
     const relationTypes = catalogs.types.data?.types ?? [];
     const relationTypeIds = relationTypes.map((type) => type.id);
@@ -60,10 +60,10 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
               ["今日新增关系", count.data?.todayNewRelations],
             ].map(([label, value], index) => (
               <div
-                className={`overview-metric${index === 0 ? " relation-overview-primary" : ""}`}
+                className="overview-metric"
                 key={label}
               >
-                <span className={`overview-count${index > 0 ? " overview-count-new" : ""}`}>{value ?? "—"}</span>
+                <span className={`overview-count${index === 1 ? " overview-count-new" : index === 2 ? " overview-count-relations" : ""}`}>{value ?? "—"}</span>
                 <span>{label}</span>
               </div>
             ))}
@@ -213,7 +213,6 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
           />
         </div>
       </div>
-      <MapControlSettings />
     </>
   );
 };

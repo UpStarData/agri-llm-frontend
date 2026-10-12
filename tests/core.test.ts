@@ -62,18 +62,14 @@ describe('业务数据与地图交互边界', () => {
     expect(useDashboardStore.getState().selection).toBeNull()
     expect(useDashboardStore.getState().detailsOpen).toBe(false)
   })
-  it('左右抽屉按图层分别记忆展开状态，地图按键支持全部与单项配置', () => {
+  it('左右抽屉按图层分别记忆展开状态', () => {
     const store = useDashboardStore.getState()
     store.setDrawerOpen('fact', 'left', false)
     store.setMode('relation')
     expect(useDashboardStore.getState().drawerOpen.relation.left).toBe(true)
     store.setDrawerOpen('relation', 'right', false)
     expect(useDashboardStore.getState().drawerOpen.fact.right).toBe(true)
-    store.setAllMapControlVisibility(false)
-    expect(Object.values(useDashboardStore.getState().mapControlVisibility).every((visible) => !visible)).toBe(true)
-    store.setMapControlVisibility('globe', true)
-    expect(useDashboardStore.getState().mapControlVisibility.globe).toBe(true)
-    expect(useDashboardStore.getState().mapControlVisibility.zoom).toBe(false)
+
   })
   it('筛选状态按模式独立保存，并清理已打开的旧详情', () => {
     const store = useDashboardStore.getState()
@@ -113,7 +109,7 @@ describe('业务数据与地图交互边界', () => {
         { id: 'b', name: 'b', type: 'test', position: null, factIds: [] }],
       relations: [{ id: 'ab', sourceId: 'a', targetId: 'b', type: 'test', factIds: [] }],
     }
-    const layers = createRelationLayers({ entities: data.entities, relations: data.relations, level: 'world', crossRegion: true, flatWorld: false, isGlobe: false, longitude: 105, latitude: 35, phase: 0.5, highlightedEntityId: null, select() {} })
+    const layers = createRelationLayers({ entities: data.entities, relations: data.relations, flatWorld: false, isGlobe: false, longitude: 105, latitude: 35, phase: 0.5, highlightedEntityId: null, select() {} })
     expect(layers.find((l) => l.id === 'real-relations')?.props.data).toEqual([])
     expect(data.entities).toHaveLength(2)
     expect(data.relations).toHaveLength(1)

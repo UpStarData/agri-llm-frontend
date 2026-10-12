@@ -2,12 +2,12 @@ import { Button, Empty, Spin } from "antd";
 import { useEntityDetail } from "@/hooks/useRelationQueries";
 import type { useRelationCatalogs } from "@/hooks/useRelationQueries";
 import { useDashboardStore } from "@/store";
-import { commodityNameById, evidenceStatusLabels } from "@/utils/factFilters";
-import { useCommodities } from "@/hooks";
+import { evidenceStatusLabels } from "@/utils/factFilters";
 import { formatDate } from "@/utils/date";
 import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
+import TypeFieldsSection from "./TypeFieldsSection";
 
 interface IProps {
   id: string;
@@ -15,7 +15,6 @@ interface IProps {
 }
 const EntityDetail = ({ id, catalogs }: IProps) => {
   const detail = useEntityDetail(id);
-  const commodities = useCommodities();
   const pushDetail = useDashboardStore((s) => s.pushDetail);
   const excluded = useDashboardStore((s) => s.relationFilters.excludedTypes);
   if (detail.isPending) return <Spin description="正在加载本体详情" />;
@@ -26,18 +25,11 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
     (group) => !excluded.includes(group.typeId),
   );
   const relationCount = relations.reduce((count, group) => count + group.items.length, 0);
-  const typeFields = (entity.typeFields ?? []).filter(
-    (field) => field.value !== null && field.value !== "",
-  );
   const regionPath = entity.geo?.regionPath ?? [];
+  const commodities = (entity.commodities ?? []).filter((item) => item.name?.trim());
   return (
     <>
       <DetailIntro id={entity.entityId} label="本体 ID" title={entity.canonicalName} />
-      {entity.summary && (
-        <DetailSection title="本体简介">
-          <p className="detail-paragraph">{entity.summary}</p>
-        </DetailSection>
-      )}
       <DetailSection title="分类与位置">
         <DetailRows
           items={[
@@ -54,40 +46,36 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
                 : [regionPath.map(({ name }) => name).join(" › "), "暂无位置"]
                     .filter(Boolean).join(" / "),
             },
-            ...(regionPath?.length
-              ? [
-                  {
-                    key: "region",
-                    label: "地理范围",
-                    value: regionPath
-                      .map(({ name }) => name)
-                      .join(" › "),
-                  },
-                ]
-              : []),
-            ...(entity.commodityIds?.length
-              ? [
-                  {
-                    key: "varieties",
-                    label: "涉及品种",
-                    value: entity.commodityIds
-                      .map((item) => commodityNameById(item, commodities.data))
-                      .join("、"),
-                  },
-                ]
-              : []),
+            // ...(regionPath?.length
+            //   ? [
+            //       {
+            //         key: "region",
+            //         label: "地理范围",
+            //         value: regionPath
+            //           .map(({ name }) => name)
+            //           .join(" › "),
+            //       },
+            //     ]
+            //   : []),
           ]}
         />
       </DetailSection>
-      {typeFields.length > 0 && (
-        <DetailSection title="属性与数值">
-          <DetailRows
-            items={typeFields.map((field, index) => ({
-              key: `${field.label}-${index}`,
-              label: field.label,
-              value: field.value,
-            }))}
-          />
+      {commodities.length > 0 && (
+        <DetailSection title="涉及品种">
+          <p className="detail-paragraph">
+            {commodities.map((item) => item.name).join("、")}
+          </p>
+        </DetailSection>
+      )}
+      {entity.summary?.trim() && (
+        <DetailSection title="简介">
+          <p className="detail-paragraph">{entity.summary}</p>
+        </DetailSection>
+      )}
+      <TypeFieldsSection fields={entity.typeFields} />
+      {Boolean(entity.media?.length) && (
+        <DetailSection title="媒体">
+          <p className="detail-empty">媒体展示待接入</p>
         </DetailSection>
       )}
       <DetailSection title="证据状态">

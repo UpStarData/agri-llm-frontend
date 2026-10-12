@@ -10,7 +10,6 @@ import {
   useRelationCatalogs,
   useRelationQueries,
 } from "@/hooks/useRelationQueries";
-import { filterRelationGraph } from "@/utils/relationFilters";
 import DetailDrawer from "@/components/DetailDrawer";
 import LeftLayerDrawer from "@/components/LeftLayerDrawer";
 import RightRecordsDrawer from "@/components/RightRecordsDrawer";
@@ -29,9 +28,7 @@ const MapCanvas = lazy(() => import("@/components/map/MapCanvas"));
 const Dashboard = () => {
   const {
     mode,
-    relationFilters,
     relationContext,
-    relationExcluded,
     panels,
     excluded,
     countryId,
@@ -43,9 +40,7 @@ const Dashboard = () => {
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
-      relationFilters: s.relationFilters,
       relationContext: s.relationContext,
-      relationExcluded: s.excludedFilterIds.relation,
       panels: s.drawerOpen[s.mode],
       excluded: s.excludedFilterIds.fact,
       countryId: s.factFilters.countryId,
@@ -92,63 +87,13 @@ const Dashboard = () => {
   const factPoints = useFactPoints(factParams, factsActive);
   const factList = useFactList(factParams, factsActive, countryId, provinceId);
   const relationCatalogs = useRelationCatalogs();
-  const relationQueries = useRelationQueries(relationCatalogs.categories.data);
-  const { relationGraph, relationMap } = useMemo(() => {
-    const relationGraph = filterRelationGraph(
-      relationQueries.graph.data?.entities ?? [],
-      relationQueries.graph.data?.relations ?? [],
-      relationExcluded,
-      relationFilters.excludedTypes,
-      relationQueries.commodityIds,
-      relationFilters.keyword,
-    );
-    const relationMapPoints = filterRelationGraph(
-      relationQueries.map.data?.entities ?? [],
-      relationQueries.map.data?.relations ?? [],
-      relationExcluded,
-      relationFilters.excludedTypes,
-      relationQueries.commodityIds,
-      relationFilters.keyword,
-    );
-    const pointIds = new Set(
-      relationMapPoints.entities.map((entity) => entity.id),
-    );
-    const crossEdges = relationFilters.crossRegion
-      ? relationGraph.relations.filter(
-          (relation) =>
-            pointIds.has(relation.sourceId) || pointIds.has(relation.targetId),
-        )
-      : [];
-    const crossEndpointIds = new Set(
-      crossEdges.flatMap((relation) => [relation.sourceId, relation.targetId]),
-    );
-    const relationMap = {
-      entities: [
-        ...relationMapPoints.entities,
-        ...relationGraph.entities.filter(
-          (entity) =>
-            crossEndpointIds.has(entity.id) && !pointIds.has(entity.id),
-        ),
-      ],
-      relations: [
-        ...new Map(
-          [...relationMapPoints.relations, ...crossEdges].map((relation) => [
-            relation.id,
-            relation,
-          ]),
-        ).values(),
-      ],
-    };
-    return { relationGraph, relationMap };
-  }, [
-    relationQueries.graph.data,
-    relationQueries.map.data,
-    relationExcluded,
-    relationFilters,
-    relationQueries.commodityIds,
+  const relationQueries = useRelationQueries(
     relationCatalogs.categories.data,
     relationCatalogs.types.data,
-  ]);
+  );
+  const relationGraph = relationQueries.graph.data;
+  // 地图接口独立返回地域、跨区域及左侧筛选结果，不混入图谱接口数据。
+  const relationMap = relationQueries.map.data;
   const focusEntityIds = useMemo(
     () =>
       relationContext?.rootEntityId
@@ -202,7 +147,7 @@ const Dashboard = () => {
         ) : (
           <EntityList
             list={relationQueries.list}
-            noCategories={relationQueries.noCategories}
+            scope={relationQueries.listScope}
             categories={relationCatalogs.categories.data}
           />
         )}

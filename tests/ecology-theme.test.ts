@@ -1,7 +1,7 @@
 import { relationColor, relationDomainInfo } from "../src/utils/relationFilters";
 import { describe, expect, it } from "vitest";
 import { createMapLayers, createInfluenceLayers } from "../src/utils/mapLayers";
-import { createRelationLayers, prepareRelationPaths } from "../src/utils/relationLayers";
+import { createRelationLayers, createRelationFlowLayer, prepareRelationPaths } from "../src/utils/relationLayers";
 import type { Entity, Relation } from "../src/types";
 import { ECOLOGY_THEME as eco, rgb } from "../src/utils/ecologyTheme";
 
@@ -15,7 +15,7 @@ const relations: Relation[] = [
   { id: "b", sourceId: "port", targetId: "risk", type: "01a12521-7294-71a5-99f1-0ed778a2428f", colorDomain: "logistics", factIds: [] },
 ];
 const options = {
-  entities, relations, level: "world", crossRegion: true, flatWorld: false,
+  entities, relations, flatWorld: false,
   isGlobe: false, longitude: 105, latitude: 35, highlightedEntityId: null,
   paths: prepareRelationPaths(entities, relations, false, false), select() {},
 };
@@ -40,8 +40,8 @@ describe("生态亮色主题集成", () => {
     });
     const edges = layers[0].props.data as { color: number[] }[];
     expect(edges[0].color.slice(0, 3)).toEqual(relationColor("", undefined, domain));
-    const arrows = layers.find((layer) => layer.id === "relation-arrows")!.props.data as { color: number[] }[];
-    expect(arrows[0].color).toEqual(edges[0].color);
+    const particles = createRelationFlowLayer(layers, 0.25).props.data as { color: number[] }[];
+    expect(particles[0].color).toEqual(edges[0].color);
   });
   it("相同节点数据切主题时刷新 GPU 属性，仅选中节点有额外描边", () => {
     const dark = createRelationLayers({ ...options, colorTheme: "dark" });

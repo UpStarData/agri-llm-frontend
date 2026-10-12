@@ -91,13 +91,13 @@ describe("图谱接口契约", () => {
     );
   });
 
-  it("/graph/points 在 JSON 请求体中传视角", async () => {
-    const result = await getRelationGraphPoints({ view: "hunan" });
+  it.each([true, false])("/graph/points 传视角和跨区域开关 %s", async (includeCrossRegion) => {
+    const result = await getRelationGraphPoints({ view: "hunan", includeCrossRegion });
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({
         url: "/graph/points",
         method: "POST",
-        data: { view: "hunan" },
+        data: { view: "hunan", includeCrossRegion },
       }),
     );
     expect(relationGraphForView(result).entities[0].viewLevels).toEqual(["china", "hunan"]);

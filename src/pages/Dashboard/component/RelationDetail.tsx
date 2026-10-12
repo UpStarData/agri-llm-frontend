@@ -7,6 +7,7 @@ import { formatDate } from "@/utils/date";
 import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
+import TypeFieldsSection from "./TypeFieldsSection";
 
 interface IProps {
   id: string;
@@ -21,9 +22,6 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
   if (!relation) return <Empty description="暂无详情" />;
   const { source, target, typeId } = relation.overview;
   const type = relationTypeInfo(typeId, catalogs.types.data);
-  const typeFields = (relation.typeFields ?? []).filter(
-    (field) => field.value !== null && field.value !== "",
-  );
   const arrow =
     (relation.directed ?? type?.directed) === false ? "↔" : "→";
   return (
@@ -82,17 +80,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
           ]}
         />
       </DetailSection>
-      {typeFields.length > 0 && (
-        <DetailSection title="属性与数值">
-          <DetailRows
-            items={typeFields.map((field, index) => ({
-              key: `${field.label}-${index}`,
-              label: field.label,
-              value: field.value,
-            }))}
-          />
-        </DetailSection>
-      )}
+      <TypeFieldsSection fields={relation.typeFields} />
       <DetailSection title="证据状态">
         <DetailRows
           items={[

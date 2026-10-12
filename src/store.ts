@@ -12,8 +12,6 @@ import type {
 import type { GeoPointKind } from "./api/fact";
 
 type DrawerSide = "left" | "right" | "bottom";
-type MapControl =
-  "globe" | "graph" | "ports" | "fullscreen" | "zoom" | "reset" | "influence" | "video" | "search";
 
 interface IFactFilters {
   // 与 /commodities 返回的 id 一致，事实层和关联层共用。
@@ -31,7 +29,6 @@ interface IModeState {
   detailsOpen: boolean;
   detailStack: Selection[];
   highlightedEntityId: string | null;
-  mapControlVisibility: Record<MapControl, boolean>;
 }
 interface DashboardState {
   mode: Mode;
@@ -68,7 +65,6 @@ interface DashboardState {
   excludedFilterIds: Record<Mode, string[]>;
   mapOverlayVisibility: Record<MapOverlayType, boolean>;
   factGeoKinds: GeoPointKind[];
-  mapControlVisibility: Record<MapControl, boolean>;
   factFilters: IFactFilters;
   setFactFilters: (filters: Partial<IFactFilters>) => void;
   setFactRegion: (countryId: string, provinceId?: string) => void;
@@ -83,20 +79,7 @@ interface DashboardState {
   setExcludedFilterIds: (mode: Mode, ids: string[]) => void;
   setMapOverlayVisibility: (type: MapOverlayType, visible: boolean) => void;
   setFactGeoKinds: (kinds: GeoPointKind[]) => void;
-  setMapControlVisibility: (control: MapControl, visible: boolean) => void;
-  setAllMapControlVisibility: (visible: boolean) => void;
 }
-const controls = {
-  globe: true,
-  graph: true,
-  ports: true,
-  fullscreen: true,
-  zoom: true,
-  reset: true,
-  influence: true,
-  video: true,
-  search: true,
-};
 const modeState = (): IModeState => ({
   level: "world",
   regionId: undefined,
@@ -104,7 +87,6 @@ const modeState = (): IModeState => ({
   detailsOpen: false,
   detailStack: [],
   highlightedEntityId: null,
-  mapControlVisibility: { ...controls },
 });
 const captureMode = (s: DashboardState): IModeState => ({
   level: s.level,
@@ -113,7 +95,6 @@ const captureMode = (s: DashboardState): IModeState => ({
   detailsOpen: s.detailsOpen,
   detailStack: s.detailStack,
   highlightedEntityId: s.highlightedEntityId,
-  mapControlVisibility: s.mapControlVisibility,
 });
 const today = dayjs().tz(DISPLAY_TIMEZONE);
 export const useDashboardStore = create<DashboardState>((set) => ({
@@ -207,17 +188,6 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   excludedFilterIds: { fact: [], relation: [] },
   mapOverlayVisibility: { ports: false, factSources: false, influence: false },
   factGeoKinds: [],
-  mapControlVisibility: {
-    globe: true,
-    graph: true,
-    ports: true,
-    fullscreen: true,
-    zoom: true,
-    reset: true,
-    influence: true,
-    video: true,
-    search: true,
-  },
   factFilters: {
     varieties: [],
     countryId: "",
@@ -343,20 +313,4 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       mapOverlayVisibility: { ...state.mapOverlayVisibility, [type]: visible },
     })),
   setFactGeoKinds: (factGeoKinds) => set({ factGeoKinds }),
-  setMapControlVisibility: (control, visible) =>
-    set((state) => ({
-      mapControlVisibility: {
-        ...state.mapControlVisibility,
-        [control]: visible,
-      },
-    })),
-  setAllMapControlVisibility: (visible) =>
-    set((state) => ({
-      mapControlVisibility: Object.fromEntries(
-        Object.keys(state.mapControlVisibility).map((control) => [
-          control,
-          visible,
-        ]),
-      ) as Record<MapControl, boolean>,
-    })),
 }));

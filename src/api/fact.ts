@@ -9,11 +9,16 @@ export interface FactTaxonomyGroup {
   categories: { id: string; name: string; types: { id: string; name: string; emoji: string }[] }[];
 }
 export interface FactTaxonomy { groups: FactTaxonomyGroup[] }
+export type DetailTypeField = (
+  | { label: string; labe?: string }
+  | { label?: string; labe: string }
+) & { value: string | number | null };
 export interface ApiFact {
   factId: string;
   title: string;
   summary: string;
   keyMetrics?: string;
+  typeFields?: DetailTypeField[] | null;
   /** F3 三级分类叶子节点 UUID v7；null=未分类。 */
   categoryId?: string | null;
   /** 分类中文名（后端随 categoryId 下发）；null=未分类。 */
