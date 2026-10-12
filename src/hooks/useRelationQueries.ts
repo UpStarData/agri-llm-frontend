@@ -29,7 +29,7 @@ export const relationGraphForView = (response: GraphEnvelope): RelationGraph => 
     entities: nodes.map((node) => ({
       id: node.entityId,
       name: node.canonicalName,
-      type: node.categoryL2,
+      type: node.categoryId,
       displayGroup: node.displayGroup ?? undefined,
       position: node.geoPoint,
       viewLevels: node.viewLevels,
@@ -92,9 +92,9 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
   const commodityIds = varieties;
 
   const filters = {
-    categories: (
+    categoryIds: (
       categories?.categories.flatMap((group) =>
-        group.children.map((child) => child.key),
+        group.children.map((child) => child.id),
       ) ?? []
     ).filter((id) => !excluded.includes(id)),
     commodityIds,
@@ -145,7 +145,7 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
         ? page.page + 1
         : undefined;
     },
-    enabled: active && Boolean(categories) && filters.categories.length > 0,
+    enabled: active && Boolean(categories) && filters.categoryIds.length > 0,
     staleTime: Infinity,
     meta: { notifyOnError: true },
   });
@@ -163,7 +163,7 @@ export const useRelationQueries = (categories?: EntityCategoryCatalog) => {
     list,
     count,
     commodityIds,
-    noCategories: Boolean(categories) && filters.categories.length === 0,
+    noCategories: Boolean(categories) && filters.categoryIds.length === 0,
   };
 };
 

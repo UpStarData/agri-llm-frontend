@@ -14,6 +14,8 @@ import type { Entity, Relation } from "../src/types";
 
 // 目录 /relation-types 下发的关系类型 ID（UUID v7，语义 key 已退役）
 const SUPPLIES_TYPE_ID = "01a12521-7294-71a5-99f1-0ed778a2428f";
+// 目录 /entity-categories 下发的二级分类 ID（UUID v7）
+const MARKET_CATEGORY_ID = "01a12521-7294-71a5-99f1-0ed778a2c0de";
 
 function createRelationLayers(
   options: Omit<Parameters<typeof buildRelationLayers>[0], "paths"> & {
@@ -45,7 +47,7 @@ const nodes: Entity[] = [
   {
     id: "hx",
     name: "红星市场",
-    type: "市场",
+    type: MARKET_CATEGORY_ID,
     position: [113, 28],
     factIds: [],
     regionPath: [
@@ -103,26 +105,16 @@ const edgeData = (layers: ReturnType<typeof createRelationLayers>) =>
 
 describe("关联筛选与地图规则", () => {
   it("目录 typeId 能筛选返回的本体与关系", () => {
-    const categories = {
-      version: "EC-v1",
-      categories: [
-        {
-          key: "geo",
-          name: "地理与设施",
-          children: [{ key: "market", name: "市场", displayGroup: "market" }],
-        },
-      ],
-    };
     const types = {
       version: "RT-v1",
       types: [
         {
-          key: SUPPLIES_TYPE_ID,
+          id: SUPPLIES_TYPE_ID,
           name: "供应",
           colorDomain: "production_supply",
           directed: true,
-          sourceL2s: [],
-          targetL2s: [],
+          sourceCategoryIds: [],
+          targetCategoryIds: [],
         },
       ],
     };
@@ -131,12 +123,10 @@ describe("关联筛选与地图规则", () => {
       filterRelationGraph(
         nodes,
         edges,
-        ["market"],
+        [MARKET_CATEGORY_ID],
         [],
         [],
         "",
-        categories,
-        types,
       ).entities.some((entity) => entity.id === "hx"),
     ).toBe(false);
     expect(
@@ -147,7 +137,6 @@ describe("关联筛选与地图规则", () => {
         [SUPPLIES_TYPE_ID],
         [],
         "",
-        categories,
       ).relations,
     ).toEqual([]);
   });
@@ -163,7 +152,7 @@ describe("关联筛选与地图规则", () => {
     const filtered = filterRelationGraph(
       nodes,
       edges,
-      ["市场"],
+      [MARKET_CATEGORY_ID],
       [],
       ["cherry"],
     );
@@ -190,7 +179,7 @@ describe("关联筛选与地图规则", () => {
         }),
       ).map((e) => e.id),
     ).toEqual(["cl-hx", "hn-hx"]);
-    const filtered = filterRelationGraph(nodes, edges, ["市场"], [], []);
+    const filtered = filterRelationGraph(nodes, edges, [MARKET_CATEGORY_ID], [], []);
     expect(
       edgeData(
         createRelationLayers({

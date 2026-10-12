@@ -43,15 +43,15 @@ export const ecologyCssVariables = Object.fromEntries(
     .map(([key, value]) => [`--eco-${key}`, value]),
 );
 
-// 分类使用接口已有的 categoryL2/key 或中文名称，不根据关系数量推断枢纽。
+// 分类只用接口随行下发的 displayGroup（9 值枚举）；entity.type 为分类 UUID，无语义可判。
 export const isLogisticsHub = (entity: Entity) =>
-  entity.displayGroup === "port_airport" || /^(port|airport|logistics_hub|logistics_center|warehouse|港口|机场|物流枢纽|物流中心|仓储|仓库)$/.test(entity.type);
+  entity.displayGroup === "port_airport";
 export const entityThemeColor = (entity: Entity): string =>
-  (entity.displayGroup === "geo_risk" || /^(risk|risk_event|异常|风险|风险事件|地缘风险区)$/.test(entity.type))
+  entity.displayGroup === "geo_risk"
     ? ECOLOGY_THEME.anomaly
     : isLogisticsHub(entity)
       ? ECOLOGY_THEME.hub
-      : (entity.displayGroup === "market" || /^(market|wholesale_market|市场|批发市场)$/.test(entity.type))
+      : entity.displayGroup === "market"
         ? ECOLOGY_THEME.priorityRoute
         : entity.displayGroup && !["production_base", "variety"].includes(entity.displayGroup)
           ? ECOLOGY_THEME.route

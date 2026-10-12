@@ -14,13 +14,13 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
   const { entityGroups, entityCategoryIds } = useMemo(() => {
     const entityGroups = catalogs.categories.data?.categories ?? [];
     const entityCategoryIds = entityGroups.flatMap((group) =>
-      group.children.map((child) => child.key),
+      group.children.map((child) => child.id),
     );
     return { entityGroups, entityCategoryIds };
   }, [catalogs.categories.data]);
   const { relationTypes, relationTypeIds, relationGroups } = useMemo(() => {
     const relationTypes = catalogs.types.data?.types ?? [];
-    const relationTypeIds = relationTypes.map((type) => type.key);
+    const relationTypeIds = relationTypes.map((type) => type.id);
     const relationGroups: { domain: string; types: typeof relationTypes }[] = [];
     for (const type of relationTypes) {
       const last = relationGroups.at(-1);
@@ -100,9 +100,9 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
         ) : <Collapse
           ghost
           size="small"
-          defaultActiveKey={[entityGroups[0]?.key]}
-          items={entityGroups.map(({ key, name, children }, i) => ({
-            key,
+          defaultActiveKey={[entityGroups[0]?.id]}
+          items={entityGroups.map(({ id, name, children }, i) => ({
+            key: id,
             label: (
               <span
                 className={`filter-section-title filter-section-${["blue", "green", "cyan", "coral"][i]}`}
@@ -113,25 +113,25 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
             extra: (
               <Checkbox
                 aria-label={`选择${name}`}
-                checked={children.every(({ key }) => !excluded.includes(key))}
+                checked={children.every(({ id }) => !excluded.includes(id))}
                 indeterminate={
-                  children.some(({ key }) => !excluded.includes(key)) &&
-                  children.some(({ key }) => excluded.includes(key))
+                  children.some(({ id }) => !excluded.includes(id)) &&
+                  children.some(({ id }) => excluded.includes(id))
                 }
                 onClick={(e) => e.stopPropagation()}
-                onChange={(e) => changeGroup(children.map((child) => child.key), e.target.checked)}
+                onChange={(e) => changeGroup(children.map((child) => child.id), e.target.checked)}
               />
             ),
             children: (
               <div className="drawer-filter-options">
                 {children.map((type) => (
                   <Button
-                    key={type.key}
+                    key={type.id}
                     size="small"
                     title={type.name}
-                    className={`filter-chip${excluded.includes(type.key) ? " is-off" : ""}`}
-                    aria-pressed={!excluded.includes(type.key)}
-                    onClick={() => changeGroup([type.key], excluded.includes(type.key))}
+                    className={`filter-chip${excluded.includes(type.id) ? " is-off" : ""}`}
+                    aria-pressed={!excluded.includes(type.id)}
+                    onClick={() => changeGroup([type.id], excluded.includes(type.id))}
                   >
                     {type.name}
                   </Button>
@@ -182,15 +182,15 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
             <div className="drawer-filter-options">
               {types.map((type) => (
                 <Button
-                  key={type.key}
+                  key={type.id}
                   size="small"
-                  className={`filter-chip${filters.excludedTypes.includes(type.key) ? " is-off" : ""}`}
-                  aria-pressed={!filters.excludedTypes.includes(type.key)}
+                  className={`filter-chip${filters.excludedTypes.includes(type.id) ? " is-off" : ""}`}
+                  aria-pressed={!filters.excludedTypes.includes(type.id)}
                   onClick={() =>
                     setFilters({
-                      excludedTypes: filters.excludedTypes.includes(type.key)
-                        ? filters.excludedTypes.filter((id) => id !== type.key)
-                        : [...filters.excludedTypes, type.key],
+                      excludedTypes: filters.excludedTypes.includes(type.id)
+                        ? filters.excludedTypes.filter((id) => id !== type.id)
+                        : [...filters.excludedTypes, type.id],
                     })
                   }
                 >

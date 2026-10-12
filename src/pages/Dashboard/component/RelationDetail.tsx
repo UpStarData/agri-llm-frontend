@@ -54,7 +54,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
                   }
                 >
                   {source.canonicalName}
-                  {`（${entityCategoryName(source.categoryL2, catalogs.categories.data)}）`}
+                  {`（${entityCategoryName(source.categoryId, catalogs.categories.data)}）`}
                 </Button>
               ),
             },
@@ -70,7 +70,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
                   }
                 >
                   {target.canonicalName}
-                  {`（${entityCategoryName(target.categoryL2, catalogs.categories.data)}）`}
+                  {`（${entityCategoryName(target.categoryId, catalogs.categories.data)}）`}
                 </Button>
               ),
             },

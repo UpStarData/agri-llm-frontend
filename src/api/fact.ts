@@ -3,9 +3,10 @@ import { request } from "./request";
 export interface ApiResponse<T> { data: T }
 export interface FactCount { total?: number; todayAdded?: number }
 export interface FactTaxonomyGroup {
-  key: string;
+  /** 分类节点 ID（UUID v7，任意层级），事实分类筛选的取值来源 */
+  id: string;
   name: string;
-  categories: { key: string; name: string; types: { key: string; name: string; emoji: string }[] }[];
+  categories: { id: string; name: string; types: { id: string; name: string; emoji: string }[] }[];
 }
 export interface FactTaxonomy { groups: FactTaxonomyGroup[] }
 export interface ApiFact {

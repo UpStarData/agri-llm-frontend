@@ -60,7 +60,7 @@ const EntityList = ({ list, noCategories, categories }: IProps) => {
               >
                 <Tag>
                   {entityCategoryName(
-                    entity.category.l2 ?? entity.category.l1 ?? "",
+                    entity.category.categoryId,
                     categories,
                   )}
                 </Tag>

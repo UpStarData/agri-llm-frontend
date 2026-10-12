@@ -25,7 +25,7 @@ const response = {
       {
         entityId: "e:1",
         canonicalName: "湖南基地",
-        categoryL2: "production_base",
+        categoryId: "production_base",
         displayGroup: "production_base",
         geoPoint: [112, 28],
         viewLevels: ["china", "hunan"],
@@ -33,7 +33,7 @@ const response = {
       {
         entityId: "e:2",
         canonicalName: "无坐标本体",
-        categoryL2: "company",
+        categoryId: "company",
         displayGroup: "company",
         geoPoint: null,
         viewLevels: [],
@@ -117,9 +117,9 @@ describe("关系详情接口契约", () => {
       source: {
         entityId: "e:1",
         canonicalName: "产区",
-        categoryL2: "production_base",
+        categoryId: "production_base",
       },
-      target: { entityId: "e:2", canonicalName: "市场", categoryL2: "market" },
+      target: { entityId: "e:2", canonicalName: "市场", categoryId: "market" },
       typeId: PRODUCES_TYPE_ID,
     },
     supportFacts: [{ factId: "f1", title: "运输事实", basis: "来源说明" }],

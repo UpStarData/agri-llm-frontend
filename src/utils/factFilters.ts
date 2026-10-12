@@ -42,27 +42,27 @@ export const matchesFactFilters = (
 
 /**
  * 压缩事实层分类筛选入参：一级/二级下的三级类型全保留时直接传层级节点 ID
- * （契约 A-27：服务端按节点深度展开子树），仅部分保留时下钻到叶子 key。
+ * （契约 A-27：服务端按节点深度展开子树），仅部分保留时下钻到叶子 id。
  */
 export const compactCategoryIds = (
   groups: readonly FactTaxonomyGroup[],
   excluded: readonly string[],
 ): string[] => {
-  const excludedKeys = new Set(excluded);
+  const excludedIds = new Set(excluded);
   const ids: string[] = [];
   for (const group of groups) {
     const types = group.categories.flatMap((category) => category.types);
-    if (types.length > 0 && types.every((type) => !excludedKeys.has(type.key))) {
-      ids.push(group.key);
+    if (types.length > 0 && types.every((type) => !excludedIds.has(type.id))) {
+      ids.push(group.id);
       continue;
     }
     for (const category of group.categories) {
       if (category.types.length === 0) continue;
-      if (category.types.every((type) => !excludedKeys.has(type.key))) {
-        ids.push(category.key);
+      if (category.types.every((type) => !excludedIds.has(type.id))) {
+        ids.push(category.id);
       } else {
         for (const type of category.types) {
-          if (!excludedKeys.has(type.key)) ids.push(type.key);
+          if (!excludedIds.has(type.id)) ids.push(type.id);
         }
       }
     }

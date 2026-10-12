@@ -54,8 +54,8 @@ const FactMenu = ({
     const next = new Set(excluded);
     for (const category of group.categories) {
       for (const type of category.types) {
-        if (checked) next.delete(type.key);
-        else next.add(type.key);
+        if (checked) next.delete(type.id);
+        else next.add(type.id);
       }
     }
     setExcluded("fact", [...next]);
@@ -65,8 +65,8 @@ const FactMenu = ({
     for (const group of taxonomy?.groups ?? []) {
       for (const category of group.categories) {
         for (const type of category.types) {
-          if (next.has(type.key)) next.delete(type.key);
-          else next.add(type.key);
+          if (next.has(type.id)) next.delete(type.id);
+          else next.add(type.id);
         }
       }
     }
@@ -123,17 +123,17 @@ const FactMenu = ({
             ghost
             size="small"
             defaultActiveKey={
-              taxonomy.groups[0] ? [taxonomy.groups[0].key] : []
+              taxonomy.groups[0] ? [taxonomy.groups[0].id] : []
             }
             items={taxonomy.groups.map((section, sectionIndex) => {
               const allSelected = section.categories.every(({ types }) =>
-                types.every(({ key }) => !excluded.includes(key)),
+                types.every(({ id }) => !excluded.includes(id)),
               );
               const someSelected = section.categories.some(({ types }) =>
-                types.some(({ key }) => !excluded.includes(key)),
+                types.some(({ id }) => !excluded.includes(id)),
               );
               return {
-                key: section.key,
+                key: section.id,
                 label: (
                   <span
                     className={`filter-section-title filter-section-${["blue", "green", "cyan", "coral"][sectionIndex % 4]}`}
@@ -158,19 +158,19 @@ const FactMenu = ({
                       <div className="drawer-filter-group" key={group.name}>
                         <span className="filter-group-name">{group.name}</span>
                         <div className="drawer-filter-options">
-                          {group.types.map(({ key, name, emoji }) => (
+                          {group.types.map(({ id, name, emoji }) => (
                             <Button
-                              key={key}
+                              key={id}
                               size="small"
                               icon={
                                 <span role="img" aria-hidden="true">
                                   {emoji}
                                 </span>
                               }
-                              className={`filter-chip${excluded.includes(key) ? " is-off" : ""}`}
-                              aria-pressed={!excluded.includes(key)}
+                              className={`filter-chip${excluded.includes(id) ? " is-off" : ""}`}
+                              aria-pressed={!excluded.includes(id)}
                               title={name}
-                              onClick={() => changeCategory(key)}
+                              onClick={() => changeCategory(id)}
                             >
                               {name}
                             </Button>

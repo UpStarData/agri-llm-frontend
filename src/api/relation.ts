@@ -6,26 +6,27 @@ import type { FactView } from "./fact";
 export interface EntityCategoryCatalog {
   version: string;
   categories: {
-    key: string;
+    id: string;
     name: string;
-    children: { key: string; name: string; displayGroup: string }[];
+    children: { id: string; name: string; displayGroup: string }[];
   }[];
 }
 export interface RelationTypeCatalog {
   version: string;
   types: {
     /** 关系类型 ID（UUID v7），是关系类型的唯一标识来源 */
-    key: string;
+    id: string;
     name: string;
     colorDomain: string;
     directed: boolean;
-    sourceL2s: string[];
-    targetL2s: string[];
+    sourceCategoryIds: string[];
+    targetCategoryIds: string[];
   }[];
 }
 
 export interface RelationFilters {
-  categories: string[];
+  /** 分类节点 UUID v7 数组，值取目录 children[].id */
+  categoryIds: string[];
   commodityIds: string[];
   q?: string;
 }
@@ -39,7 +40,7 @@ export interface EntityPage {
 export interface EntityListItem {
   entityId: string;
   canonicalName: string;
-  category: { l1?: string; l2?: string; displayGroup: string };
+  category: { categoryId: string; displayGroup: string | null };
   geo?: {
     regionPath?: { code?: string; name: string; level?: string }[];
     geoPoint?: [number, number] | null;
@@ -74,9 +75,10 @@ export interface RelationGraph {
 }
 export interface GraphRequest {
   limit?: number;
-  categoryKeys?: string[];
+  /** 分类节点 UUID v7 数组，值取目录 children[].id */
+  categoryIds?: string[];
   commodityIds?: string[];
-  /** 关系类型 ID 数组，值取目录 types[].key（UUID v7） */
+  /** 关系类型 ID 数组，值取目录 types[].id（UUID v7） */
   relationTypes?: string[];
   evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";
   sourceType?: "fact" | "preset";
@@ -89,7 +91,8 @@ export interface GraphPointsRequest extends GraphRequest {
 export interface GraphNode {
   entityId: string;
   canonicalName: string;
-  categoryL2: string;
+  /** 二级分类节点 UUID v7（中文名走目录接口） */
+  categoryId: string;
   displayGroup: string | null;
   geoPoint: [number, number] | null;
   viewLevels: FactView[];
@@ -163,10 +166,10 @@ export const getRelationCount = () =>
 export interface RelationDetailResponse {
   relationId: string;
   overview: {
-    source: { entityId: string; canonicalName: string; categoryL2: string };
+    source: { entityId: string; canonicalName: string; categoryId: string };
     typeId: string;
     name?: string;
-    target: { entityId: string; canonicalName: string; categoryL2: string };
+    target: { entityId: string; canonicalName: string; categoryId: string };
   };
   directed?: boolean;
   colorDomain?: string;
