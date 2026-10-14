@@ -55,7 +55,7 @@ const FilterBar = () => {
         <Segmented
           className="fact-time-segmented"
           aria-label="事实时间范围"
-          value={[1, 7, 30].find(
+          value={[1, 7, 30, 180, 365].find(
             (days) =>
               dates[1] === today.format("YYYY-MM-DD") &&
               dates[0] === today.subtract(days - 1, "day").format("YYYY-MM-DD"),
@@ -64,6 +64,8 @@ const FilterBar = () => {
             { value: 1, label: "当天" },
             { value: 7, label: "近7天" },
             { value: 30, label: "近1月" },
+            { value: 180, label: "半年" },
+            { value: 365, label: "一年" },
           ]}
           onChange={(days) =>
             setDateRange([

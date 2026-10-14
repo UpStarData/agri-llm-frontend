@@ -10,8 +10,9 @@ const mocks = vi.hoisted(() => ({
     relationRevision: 0, level: "world", regionId: undefined as string | undefined,
   },
   request: vi.fn(),
+  setQueryData: vi.fn(),
 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.query, useInfiniteQuery: mocks.infiniteQuery }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.query, useInfiniteQuery: mocks.infiniteQuery, useQueryClient: () => ({ setQueryData: mocks.setQueryData }) }));
 vi.mock("../src/store", () => ({ useDashboardStore: (selector) => selector(mocks.state) }));
 vi.mock("zustand/react/shallow", () => ({ useShallow: (selector) => selector }));
 vi.mock("../src/api/request", () => ({ request: mocks.request, ApiError: class extends Error {} }));
@@ -50,6 +51,20 @@ describe("关联层后端筛选", () => {
     mocks.request.mockImplementation(async ({ url }) => url === "/entities"
       ? { code: 0, data: { items: [], total: 0, page: 1 } }
       : { code: 0, data: { nodes: [], edges: [], total: 0, returned: 0, truncated: false } });
+  });
+
+  it("轮播结束只保留第一页后刷新，筛选查询键不变", async () => {
+    const refetch = vi.fn(async () => ({}));
+    mocks.infiniteQuery.mockImplementationOnce((options) => ({ ...options, refetch }));
+    const result = runRelationQueries(categories, types);
+    await result.refreshList();
+    const [key, trim] = mocks.setQueryData.mock.lastCall!;
+    expect(key[0]).toBe("relation");
+    expect(key[1]).toBe("list");
+    const pages = [{ items: [{ entityId: "a" }] }, { items: [{ entityId: "b" }] }];
+    expect(trim({ pages, pageParams: [1, 2] })).toEqual({ pages: [pages[0]], pageParams: [1] });
+    expect(trim(undefined)).toBeUndefined();
+    expect(refetch).toHaveBeenCalledWith({ cancelRefetch: false });
   });
 
   it("三个请求统一传入目录关系 ID、本体分类、品种和搜索条件", async () => {

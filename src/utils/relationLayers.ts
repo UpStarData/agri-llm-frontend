@@ -33,7 +33,7 @@ const vector = ([lng, lat]: Position) => [
   Math.cos(lat * radians) * Math.sin(lng * radians),
   Math.sin(lat * radians),
 ];
-// 曲线与流动光点使用同一条大圆路径，避免偏离。
+// 底线与流光复用同一条采样路径，避免转动、缩放时偏离。
 export const relationPath = (
   from: Position,
   to: Position,
@@ -54,14 +54,14 @@ export const relationPath = (
   const longitudeDelta = ((to[0] - from[0] + 540) % 360) - 180;
   const latitudeDelta = to[1] - from[1];
   const distance = Math.hypot(longitudeDelta, latitudeDelta);
-  // 平面视图给关系线一个轻微的侧向弧度；端点仍精确落在本体上。
-  const bend = Math.min(8, distance * 0.16);
+  // 加大侧向弧度，让短途与跨区域关系都呈现舒展的拱形。
+  const bend = Math.min(24, distance * 0.34);
   const bendLongitude = distance ? (-latitudeDelta / distance) * bend : 0;
   const bendLatitude = distance ? (longitudeDelta / distance) * bend : 0;
-  return Array.from({ length: 33 }, (_, i) => {
+  return Array.from({ length: 65 }, (_, i) => {
     if (i === 0) return [from[0], from[1], 0];
-    if (i === 32) return [from[0] + longitudeDelta, to[1], 0];
-    const t = i / 32;
+    if (i === 64) return [from[0] + longitudeDelta, to[1], 0];
+    const t = i / 64;
     // 重合及对跖点采用经度最短方向插值，避免除零。
     let lng = from[0] + longitudeDelta * t;
     let lat = from[1] + (to[1] - from[1]) * t;
@@ -81,7 +81,7 @@ export const relationPath = (
     return [
       globe ? lng : lng + bendLongitude * arch,
       globe ? lat : lat + bendLatitude * arch,
-      globe ? arch * Math.min(1_200_000, Math.max(40_000, angle * 1_800_000)) : 0,
+      globe ? arch * Math.min(3_000_000, angle * 3_800_000) : 0,
     ];
   });
 };
@@ -125,20 +125,6 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     const [lng, lat] = flatWorld ? flattenWorldPosition([p[0], p[1]]) : p;
     return [lng, lat, p[2] ?? 0];
   };
-  const onScreen = (entity: Entity) => {
-    if (!validPosition(entity.position)) return false;
-    if (isGlobe) {
-      const p = vector(entity.position),
-        center = vector([options.longitude, options.latitude]);
-      if (p.reduce((sum, n, i) => sum + n * center[i], 0) < 0) return false;
-    }
-    if (project && options.width && options.height) {
-      const [x, y] = project(transform(entity.position));
-      if (x < 0 || y < 0 || x > options.width || y > options.height)
-        return false;
-    }
-    return true;
-  };
   // 后端已按 view、includeCrossRegion 和业务筛选确定集合；保留外部端点。
   const nodes = entities
     .filter((e) => validPosition(e.position))
@@ -159,10 +145,11 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     )
       return [];
     const important = focus.has(from.id) || focus.has(to.id);
-    if (isGlobe && !onScreen(from) && !onScreen(to)) return [];
     const path = paths.get(relation.id);
     if (!path) return [];
-    if (project) {
+    // 球面由海洋深度遮挡处理可见性；端点不可见时高空弧线仍可能可见。
+    // 转动中不改变关系集合，避免流光实例被移除、重排和重新创建。
+    if (!isGlobe && project) {
       const a = project(path[0]),
         b = project(path.at(-1)!);
       const pixelLength = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -232,6 +219,12 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       updateTriggers: { getColor: [colorTheme, highlightedEntityId, focusEntityIds, glowingRelationIds] },
       widthUnits: "pixels",
       widthMinPixels: 1,
+      widthScale: 0.65,
+      opacity: 0.7,
+      capRounded: true,
+      jointRounded: true,
+      billboard: true,
+      antialiasing: true,
       onClick: ({ object }) => {
         if (object) select({ kind: "relation", id: object.id });
       },
@@ -311,29 +304,74 @@ export function prepareRelationPaths(
   return paths;
 }
 
-/** 动画只更新光点，不重建路径、边界或本体图层。 */
-export function createRelationFlowLayer(layers: Layer[], phase: number) {
+// 按关系 ID 和方向生成稳定的伪随机时序，筛选、重绘不会重新抽签。
+function flowTiming(id: string, reverse: boolean) {
+  let seed = 2166136261;
+  for (const char of `${id}:${reverse ? "reverse" : "forward"}`)
+    seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  return { offset: random() * 6, duration: 2.4 + random() * 1.8 };
+}
+
+/** 动画只截取流光段；时间必须连续，不能使用所有线同步归零的全局相位。 */
+export function createRelationFlowLayer(layers: Layer[], elapsedSeconds: number) {
   const edges = layers.find((layer) => layer.id === "real-relations")?.props
     .data as
     | {
+        id: string;
         path: number[][];
         color: [number, number, number, number];
         directed: boolean;
       }[]
     | undefined;
-  const particles = (edges ?? []).flatMap((edge) => [
-    { position: at(edge.path, phase), color: edge.color },
-    ...(!edge.directed
-      ? [{ position: at(edge.path, 1 - phase), color: edge.color }]
-      : []),
-  ]);
-  return new ScatterplotLayer({
+  // 一次流动覆盖约 22% 的曲线。尾端透明、主体渐宽、前端收尖。
+  // 起点处截短尾迹，避免循环时跨越首尾产生贯穿地图的直线。
+  const particles = (edges ?? []).flatMap((edge) =>
+    (edge.directed ? [false] : [false, true]).map((reverse) => {
+      const { offset, duration } = flowTiming(edge.id, reverse);
+      const progress = ((Math.max(0, elapsedSeconds) + offset) % duration) / duration;
+      const start = Math.max(0, progress - 0.22);
+      const path: number[][] = [];
+      const colors: [number, number, number, number][] = [];
+      const widths: number[] = [];
+      for (let i = 0; i <= 32; i++) {
+        const t = i / 32;
+        const sample = start + (progress - start) * t;
+        path.push(at(edge.path, reverse ? 1 - sample : sample));
+        colors.push([
+          edge.color[0], edge.color[1], edge.color[2],
+          Math.round(edge.color[3] * Math.pow(t, 0.65)),
+        ]);
+        widths.push(t < 0.82 ? 0.5 + 4 * (t / 0.82) : 4.5 * (1 - t) / 0.18);
+      }
+      return {
+        relationId: edge.id,
+        reverse,
+        progress,
+        position: at(edge.path, reverse ? 1 - progress : progress),
+        color: edge.color,
+        path,
+        colors,
+        widths,
+      };
+    }),
+  );
+  return new PathLayer({
     id: "relation-flow",
     data: particles,
     pickable: false,
-    getPosition: (d) => d.position,
-    getFillColor: (d) => d.color,
-    getRadius: 2,
-    radiusUnits: "pixels",
+    // 已沿底线采样，跳过二次路径归一化，保持逐顶点颜色/宽度一一对应。
+    _pathType: "open",
+    getPath: (d) => d.path.flat(),
+    getColor: (d) => d.colors,
+    getWidth: (d) => d.widths,
+    widthUnits: "pixels",
+    capRounded: true,
+    jointRounded: true,
+    billboard: true,
+    antialiasing: true,
   });
 }

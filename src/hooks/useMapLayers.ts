@@ -12,6 +12,8 @@ import type { Boundaries, MapData } from "@/types";
 import type { FactPoint, GeoPoint, GeoPointKind } from "@/api/fact";
 import type { RelationTypeCatalog } from "@/api/relation";
 import { flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
+import { layoutFactPoints } from "@/utils/factPointLayout";
+import { createGlobeSurface } from "@/utils/globeSurface";
 import { createMapLayers, createInfluenceLayers } from "@/utils/mapLayers";
 import {
   createRelationLayers,
@@ -85,7 +87,8 @@ export function useMapLayers({
       selection: s.selection,
     })),
   );
-  const [influencePhase, setInfluencePhase] = useState(0);
+  const [animationSeconds, setAnimationSeconds] = useState(0);
+  const influencePhase = (animationSeconds / 2.4) % 1;
   const flatWorldBoundaries = useMemo(
     () => (world && flatWorld ? flattenWorldBoundaries(world) : world),
     [world, flatWorld],
@@ -107,7 +110,7 @@ export function useMapLayers({
     let last = 0;
     const tick = (now: number) => {
       if (now - last > 32) {
-        setInfluencePhase((now % 2400) / 2400);
+        setAnimationSeconds(now / 1000);
         last = now;
       }
       frame = requestAnimationFrame(tick);
@@ -189,6 +192,36 @@ export function useMapLayers({
     ],
   );
 
+  const oceanLayer = useMemo(
+    () => isGlobe ? createGlobeSurface(colorTheme) : null,
+    [isGlobe, colorTheme],
+  );
+  const renderedBaseLayers = useMemo(() => {
+    if (mode !== "fact" || !points?.length) return baseLayers;
+    const positions = layoutFactPoints(
+      points,
+      (position) => viewport.project(flatWorld ? flattenWorldPosition(position as [number, number]) : position),
+      (position) => viewport.unproject(position),
+      ([lng, lat]) => {
+        if (!isGlobe) return true;
+        // 背面点不能反投影到正面，也避免在球面边缘展开到轮廓外。
+        const radians = Math.PI / 180;
+        const center = camera.latitude * radians;
+        const latitude = lat * radians;
+        return Math.sin(latitude) * Math.sin(center) +
+          Math.cos(latitude) * Math.cos(center) * Math.cos((lng - camera.longitude) * radians) > 0.15;
+      },
+    );
+    return baseLayers.map((layer) => layer.id === "real-facts"
+      ? (layer as ScatterplotLayer<FactPoint>).clone({
+          getPosition: (point: FactPoint) => positions.get(point) ??
+            (flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint),
+          getRadius: (point: FactPoint) => positions.has(point) ? 3 : 5,
+          updateTriggers: { ...layer.props.updateTriggers, getPosition: [positions], getRadius: [positions] },
+        })
+      : layer);
+  }, [mode, points, viewport, flatWorld, baseLayers, isGlobe, camera.latitude, camera.longitude]);
+
   const relationPaths = useMemo(
     () =>
       prepareRelationPaths(
@@ -199,6 +232,8 @@ export function useMapLayers({
       ),
     [data?.entities, data?.relations, isGlobe, flatWorld],
   );
+  // 球面图层只随业务数据变化，相机转动交给 DeckGL 的视图矩阵。
+  const relationViewport = isGlobe ? undefined : viewport;
   const relationLayers = useMemo(
     () =>
       mode === "relation"
@@ -208,15 +243,15 @@ export function useMapLayers({
             paths: relationPaths,
             flatWorld,
             isGlobe,
-            longitude: camera.longitude,
-            latitude: camera.latitude,
+            longitude: 0,
+            latitude: 0,
             highlightedEntityId,
             focusEntityIds,
             glowingEntityIds: relationGlow.entityIds,
             glowingRelationIds: relationGlow.relationIds,
             width,
             height,
-            project: (position) => viewport.project(position),
+            project: relationViewport ? (position) => relationViewport.project(position) : undefined,
             select,
             relationTypes,
             colorTheme,
@@ -228,14 +263,12 @@ export function useMapLayers({
       relationPaths,
       flatWorld,
       isGlobe,
-      camera.longitude,
-      camera.latitude,
       highlightedEntityId,
       focusEntityIds,
       relationGlow,
       width,
       height,
-      viewport,
+      relationViewport,
       select,
       relationTypes,
       colorTheme,
@@ -244,9 +277,9 @@ export function useMapLayers({
   const flowLayer = useMemo(
     () =>
       mode === "relation"
-        ? createRelationFlowLayer(relationLayers, influencePhase)
+        ? createRelationFlowLayer(relationLayers, animationSeconds)
         : null,
-    [mode, relationLayers, influencePhase],
+    [mode, relationLayers, animationSeconds],
   );
   const geoLayer = useMemo(
     () =>
@@ -284,7 +317,8 @@ export function useMapLayers({
     [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe, colorTheme],
   );
   return [
-    ...baseLayers,
+    oceanLayer,
+    ...renderedBaseLayers,
     ...influenceLayers,
     ...relationLayers,
     flowLayer,

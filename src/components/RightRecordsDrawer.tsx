@@ -25,6 +25,14 @@ const RightRecordsDrawer = ({ factList, emptyMessage }: IProps) => {
     <LayerDrawer
       side="right"
       title="事实项"
+      autoScroll={{
+        scope: factList.scope,
+        busy: factList.isFetching || factList.isFetchingNextPage || factList.isPending,
+        hasNextPage: factList.hasNextPage,
+        hasRecords: records.length > 0,
+        loadMore: factList.fetchNextPage,
+        refresh: () => factList.refetch({ cancelRefetch: false }),
+      }}
       onScroll={(event) => {
         if (!factList.hasNextPage || factList.isFetchingNextPage) return;
         const { scrollTop, clientHeight, scrollHeight } = event.currentTarget;

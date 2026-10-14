@@ -180,13 +180,49 @@ describe("关联筛选与地图规则", () => {
       createRelationLayers(options).find((l) => l.id === "relation-arrows"),
     ).toBeUndefined();
   });
-  it.each([true, false])("directed=%s 的光点沿同一曲线正向或双向持续运动", (directed) => {
+  it.each([true, false])("directed=%s 的流光沿同一曲线正向或双向持续运动", (directed) => {
     const layers = createRelationLayers({ ...options, relations: [{ ...edges[1], directed }] });
     const path = relationPath(nodes[3].position!, nodes[2].position!, false);
-    const before = createRelationFlowLayer(layers, 0.25).props.data as { position: number[] }[];
-    const after = createRelationFlowLayer(layers, 0.75).props.data as { position: number[] }[];
-    expect(before.map((particle) => particle.position)).toEqual(directed ? [path[8]] : [path[8], path[24]]);
-    expect(after.map((particle) => particle.position)).toEqual(directed ? [path[24]] : [path[24], path[8]]);
+    type Particle = { position: number[]; progress: number; reverse: boolean };
+    const before = createRelationFlowLayer(layers, 0.25).props.data as Particle[];
+    const after = createRelationFlowLayer(layers, 0.75).props.data as Particle[];
+    expect(before).toHaveLength(directed ? 1 : 2);
+    expect(before.map((particle) => particle.reverse)).toEqual(directed ? [false] : [false, true]);
+    for (const [index, particle] of after.entries()) {
+      expect(particle.position).not.toEqual(before[index].position);
+      const progress = particle.reverse ? 1 - particle.progress : particle.progress;
+      const sample = progress * (path.length - 1);
+      const from = Math.min(path.length - 2, Math.floor(sample));
+      particle.position.forEach((value, axis) => {
+        expect(value).toBeCloseTo(path[from][axis] + (path[from + 1][axis] - path[from][axis]) * (sample - from));
+      });
+    }
+  });
+  it("每条线及双向流光都有独立时序，重排与重绘保持稳定", () => {
+    const relations = Array.from({ length: 12 }, (_, index) => ({ ...edges[1], id: `flow-${index}`, directed: false }));
+    const layers = createRelationLayers({ ...options, relations });
+    type Particle = { relationId: string; reverse: boolean; progress: number; path: number[][] };
+    const sample = (time: number, input = layers) => createRelationFlowLayer(input, time).props.data as Particle[];
+    const particles = sample(10);
+    expect(new Set(particles.map((p) => p.progress)).size).toBe(24);
+    const next = sample(10.001);
+    const speeds = particles.map((p, i) => ((next[i].progress - p.progress + 1) % 1) / 0.001);
+    expect(new Set(speeds.map((speed) => speed.toFixed(6))).size).toBe(24);
+    const reordered = sample(10, createRelationLayers({ ...options, relations: [...relations].reverse() }));
+    for (const particle of particles) {
+      expect(reordered.find((p) => p.relationId === particle.relationId && p.reverse === particle.reverse)).toEqual(particle);
+      expect(particle.path).toHaveLength(33);
+    }
+    expect(sample(10)).toEqual(particles);
+  });
+  it("连续时间越过原先的2.4秒全局周期时不会所有线一起复位", () => {
+    const layers = createRelationLayers(options);
+    const before = createRelationFlowLayer(layers, 2.399).props.data as { progress: number }[];
+    const after = createRelationFlowLayer(layers, 2.401).props.data as { progress: number }[];
+    before.forEach((particle, index) => {
+      const distance = Math.abs(particle.progress - after[index].progress);
+      expect(Math.min(distance, 1 - distance)).toBeLessThan(0.002);
+    });
   });
   it.each([false, true])("%s 模式点击关系线打开关系详情", (isGlobe) => {
     const selections: { kind: string; id: string }[] = [];
@@ -232,12 +268,12 @@ describe("关联筛选与地图规则", () => {
     const flat = relationPath([112, 28], [114, 28], false);
     expect(flat[0]).toEqual([112, 28, 0]);
     expect(flat.at(-1)).toEqual([114, 28, 0]);
-    expect(flat[16][1]).toBeGreaterThan(28);
-    expect(flat[16][2]).toBe(0);
+    expect(flat[32][1]).toBeGreaterThan(28);
+    expect(flat[32][2]).toBe(0);
     const globe = relationPath([112, 28], [114, 28], true);
     expect(globe[0][2]).toBe(0);
     expect(globe.at(-1)![2]).toBeCloseTo(0);
-    expect(globe[16][2]).toBeGreaterThan(0);
+    expect(globe[32][2]).toBeGreaterThan(0);
   });
 });
 describe("关联上下文与详情", () => {
@@ -310,7 +346,7 @@ describe("关联上下文与详情", () => {
 });
 
 describe("地图路径缓存", () => {
-  it("拖动复用路径坐标，动画只构造光点", () => {
+  it("拖动复用路径坐标，动画只构造流光", () => {
     const paths = prepareRelationPaths(nodes, edges, false, false);
     const first = buildRelationLayers({ ...options, paths });
     const moved = buildRelationLayers({ ...options, paths, longitude: 110 });
@@ -331,6 +367,21 @@ describe("地图路径缓存", () => {
     expect((firstEdge.props.data as { path: number[][] }[])[0].path).toBe(
       paths.get("cl-hx"),
     );
+  });
+  it("球体转动时背面端点与投影长度不改变关系集合或流光位置", () => {
+    const paths = prepareRelationPaths(nodes, edges, true, false);
+    const first = buildRelationLayers({ ...options, isGlobe: true, paths, longitude: 113, latitude: 28,
+      project: ([lng, lat]) => [lng, lat], width: 1200, height: 800,
+    });
+    const moved = buildRelationLayers({ ...options, isGlobe: true, paths, longitude: -60, latitude: -28,
+      project: () => [0, 0], width: 1200, height: 800,
+    });
+    const firstEdge = first.find((layer) => layer.id === "real-relations")!;
+    const movedEdge = moved.find((layer) => layer.id === "real-relations")!;
+    expect(firstEdge.props.data).toHaveLength(2);
+    expect(movedEdge.props.data).toHaveLength(2);
+    expect(movedEdge.props.dataComparator!(movedEdge.props.data, firstEdge.props.data)).toBe(true);
+    expect(createRelationFlowLayer(moved, 10).props.data).toEqual(createRelationFlowLayer(first, 10).props.data);
   });
   it("数据或高亮变更会使路径缓冲失效", () => {
     const paths = prepareRelationPaths(nodes, edges, false, false);

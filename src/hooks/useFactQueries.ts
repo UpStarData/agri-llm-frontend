@@ -64,7 +64,7 @@ export function useFactList(
     active && query.data && query.data.items.length < query.data.total,
   );
   const fetchNextPage = async () => {
-    if (!hasNextPage || pageRef.current.loading || !active) return;
+    if (!hasNextPage || query.isFetching || pageRef.current.loading || !active) return;
     pageRef.current.loading = true;
     setPageLoading({ scope, loading: true });
     const nextPage = Math.ceil(query.data!.items.length / FACT_PAGE_SIZE) + 1;
@@ -93,6 +93,7 @@ export function useFactList(
   };
   return {
     ...query,
+    scope,
     isPending: active && query.isPending,
     data:
       active && query.data

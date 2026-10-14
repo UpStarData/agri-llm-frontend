@@ -115,13 +115,10 @@
   &-globe {
     background: radial-gradient(
       ellipse at 50% 48%,
-      #102b3c 0%,
-      #0b202d 55%,
-      #07151f 100%
+      #123665 0%,
+      #0a1e40 56%,
+      #060f27 100%
     );
-    .theme-light & {
-      background: var(--eco-page);
-    }
   }
   &:not(.map-canvas-globe) {
     background: radial-gradient(
@@ -186,9 +183,6 @@
   height: 100%;
   z-index: 0;
   pointer-events: none;
-  .theme-light & {
-    display: none;
-  }
 }
 
 .map-globe-ocean {
@@ -337,6 +331,9 @@
     width: fit-content;
     max-width: 100%;
     align-self: flex-start;
+    .ant-segmented-group {
+      flex-wrap: wrap;
+    }
   }
 }
 

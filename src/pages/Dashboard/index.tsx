@@ -57,7 +57,7 @@ const Dashboard = () => {
     [excluded, taxonomyQuery.data],
   );
   const today = dayjs().tz(DISPLAY_TIMEZONE);
-  const days = [1, 7, 30].find(
+  const days = [1, 7, 30, 180, 365].find(
     (count) =>
       dates[1] === today.format("YYYY-MM-DD") &&
       dates[0] === today.subtract(count - 1, "day").format("YYYY-MM-DD"),
@@ -65,14 +65,13 @@ const Dashboard = () => {
   const factParams: FactRequest = {
     view: getFactView(countryId, provinceId),
     Province: provinceId ? provinceApiCode(provinceId) : undefined,
-    TimeRange:
-      days === 1
-        ? TimeRange.Today
-        : days === 30
-          ? TimeRange.The30D
-          : days === 7
-            ? TimeRange.The7D
-            : undefined,
+    TimeRange: days === undefined ? undefined : ({
+      1: TimeRange.Today,
+      7: TimeRange.The7D,
+      30: TimeRange.The30D,
+      180: TimeRange.The180D,
+      365: TimeRange.The365D,
+    } as Record<number, TimeRange>)[days],
     CategoryIds:
       excluded.length && taxonomyQuery.data
         ? keptCategoryIds
@@ -148,6 +147,7 @@ const Dashboard = () => {
           <EntityList
             list={relationQueries.list}
             scope={relationQueries.listScope}
+            refresh={relationQueries.refreshList}
             categories={relationCatalogs.categories.data}
           />
         )}

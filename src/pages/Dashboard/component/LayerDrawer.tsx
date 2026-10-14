@@ -7,6 +7,8 @@ import {
   MenuUnfoldOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
+import { useRecordAutoScroll } from "@/hooks/useRecordAutoScroll";
+import type { RecordAutoScrollOptions } from "@/hooks/useRecordAutoScroll";
 import { useDashboardStore } from "@/store";
 
 interface IProps {
@@ -14,8 +16,9 @@ interface IProps {
   title: string;
   children: ReactNode;
   onScroll?: UIEventHandler<HTMLDivElement>;
+  autoScroll?: RecordAutoScrollOptions;
 }
-const LayerDrawer = ({ side, title, children, onScroll }: IProps) => {
+const LayerDrawer = ({ side, title, children, onScroll, autoScroll }: IProps) => {
   const content = useRef<HTMLDivElement>(null);
   const mode = useDashboardStore((s) => s.mode);
   useLayoutEffect(() => {
@@ -24,6 +27,8 @@ const LayerDrawer = ({ side, title, children, onScroll }: IProps) => {
         useDashboardStore.getState().recordScroll[mode];
   }, [mode, side]);
   const open = useDashboardStore((s) => s.drawerOpen[s.mode][side]);
+  const detailsOpen = useDashboardStore((s) => s.detailsOpen);
+  useRecordAutoScroll(content, side === "right" && open && !detailsOpen, autoScroll);
   const togglePanel = useDashboardStore((s) => s.togglePanel);
   const id = side === "left" ? "layer-menu" : "layer-records";
   return (

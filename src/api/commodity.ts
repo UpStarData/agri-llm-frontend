@@ -6,6 +6,7 @@ export interface CommodityItem {
   id: string;
   /** 品种中文名（品种筛选下拉展示名）。 */
   name: string;
+  status: string
 }
 
 // 品种主数据平铺列表（请求期查库装配，后台增删品种即时生效）

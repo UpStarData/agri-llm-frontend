@@ -166,7 +166,15 @@ export function createMapLayers({
       getPosition: (d) => position(d.geoPoint),
       getRadius: 5,
       radiusUnits: "pixels",
-      getFillColor: colors.fact,
+      getFillColor: (point) => {
+        // 只有接口明确返回热度的事实点参与灰度渐变，0 必须保留。
+        const intensity = point.intensity;
+        const heat = typeof intensity === "number" && Number.isFinite(intensity)
+          ? Math.max(0, Math.min(100, intensity)) / 100
+          : 1;
+        const gray = colorTheme === "light" ? 148 : 150;
+        return colors.fact.map((channel) => Math.round(gray + (channel - gray) * heat)) as [number, number, number];
+      },
       stroked: colorTheme === "light",
       getLineColor: rgba(eco.selected, 140),
       getLineWidth: (point) => point.factId === selectedFactId ? 4 : 0,

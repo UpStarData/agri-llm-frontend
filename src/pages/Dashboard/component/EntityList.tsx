@@ -5,7 +5,6 @@ import LayerDrawer from "./LayerDrawer";
 import { useDashboardStore } from "@/store";
 import type { useRelationQueries } from "@/hooks/useRelationQueries";
 import { commodityNameById } from "@/utils/factFilters";
-import { useEntityListPolling } from "@/hooks/useEntityListPolling";
 import { useCommodities } from "@/hooks";
 import { entityCategoryName } from "@/utils/relationFilters";
 import type { EntityCategoryCatalog } from "@/api/relation";
@@ -21,16 +20,16 @@ interface IProps {
   list: ReturnType<typeof useRelationQueries>["list"];
   categories?: EntityCategoryCatalog;
   scope: string;
+  refresh: () => Promise<unknown>;
 }
-const EntityList = ({ list, categories, scope }: IProps) => {
+const EntityList = ({ list, categories, scope, refresh }: IProps) => {
   const commodities = useCommodities();
-  const { markActivity, isRefreshing } = useEntityListPolling(list, scope);
   const pendingLoad = useRef<HTMLDivElement | null>(null);
   const loadingMore = useRef(false);
   useEffect(() => { pendingLoad.current = null; }, [scope]);
   useEffect(() => {
     const element = pendingLoad.current;
-    if (!element || list.isFetching || isRefreshing() || loadingMore.current) return;
+    if (!element || list.isFetching || loadingMore.current) return;
     pendingLoad.current = null;
     if (list.hasNextPage && element.scrollTop > 0 &&
       element.scrollTop + element.clientHeight >= element.scrollHeight - 40) {
@@ -39,7 +38,7 @@ const EntityList = ({ list, categories, scope }: IProps) => {
         loadingMore.current = false;
       });
     }
-  }, [list, isRefreshing]);
+  }, [list]);
   const { selected, open, select } = useDashboardStore(
     useShallow((s) => ({
       selected: s.selection,
@@ -56,8 +55,20 @@ const EntityList = ({ list, categories, scope }: IProps) => {
     <LayerDrawer
       side="right"
       title="本体卡片"
+      autoScroll={{
+        scope,
+        busy: list.isPending || list.isFetching,
+        hasNextPage: !!list.hasNextPage,
+        hasRecords: records.length > 0,
+        loadMore: async () => {
+          if (loadingMore.current || list.isFetching) return;
+          loadingMore.current = true;
+          try { await list.fetchNextPage({ cancelRefetch: false }); }
+          finally { loadingMore.current = false; }
+        },
+        refresh,
+      }}
       onScroll={(e) => {
-        markActivity();
         const element = e.currentTarget;
         const { scrollTop, scrollHeight, clientHeight } = element;
         if (scrollTop <= 0 || scrollTop + clientHeight < scrollHeight - 40) {
@@ -65,7 +76,7 @@ const EntityList = ({ list, categories, scope }: IProps) => {
           return;
         }
         if (!list.hasNextPage || loadingMore.current || list.isFetchingNextPage) return;
-        if (list.isFetching || isRefreshing()) {
+        if (list.isFetching) {
           pendingLoad.current = element;
           return;
         }
@@ -148,7 +159,7 @@ const EntityList = ({ list, categories, scope }: IProps) => {
           loading={list.isFetchingNextPage}
           disabled={list.isFetching && !list.isFetchingNextPage}
           onClick={() => {
-            if (list.isFetching || isRefreshing() || loadingMore.current) return;
+            if (list.isFetching || loadingMore.current) return;
             loadingMore.current = true;
             void list.fetchNextPage({ cancelRefetch: false }).finally(() => {
               loadingMore.current = false;

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import {
   getEntities,
@@ -94,6 +94,7 @@ export const useRelationQueries = (
       })),
     );
 
+  const queryClient = useQueryClient();
   const active = mode === "relation";
   const commodityIds = varieties;
 
@@ -176,6 +177,17 @@ export const useRelationQueries = (
     map,
     list,
     listScope: JSON.stringify([filters, revision]),
+    refreshList: async () => {
+      // 只重取第一页，避免自动轮播结束时重新请求整轮已加载页。
+      queryClient.setQueryData<typeof list.data>(
+        ["relation", "list", filters, revision],
+        (current) => current && ({
+          pages: current.pages.slice(0, 1),
+          pageParams: current.pageParams.slice(0, 1),
+        }),
+      );
+      return list.refetch({ cancelRefetch: false });
+    },
     count,
   };
 };

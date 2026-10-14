@@ -35,6 +35,8 @@ export interface ApiFact {
 }
 export interface FactPage { items: ApiFact[]; total: number }
 export interface FactPoint {
+  /** 热度/时效性，0–100；越低越接近灰色，缺省时保留主题色。 */
+  intensity?: number;
   impactRadiusKm?: number | null;
   factId: string;
   geoPoint: [number, number];
@@ -118,6 +120,8 @@ export enum Fields {
 export enum TimeRange {
   All = "all",
   The30D = "30d",
+  The180D = "180d",
+  The365D = "365d",
   The7D = "7d",
   Today = "today",
 }

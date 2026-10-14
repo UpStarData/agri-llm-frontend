@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CardTypes,
+  TimeRange,
   getFactCount,
   getFactDetail,
   getFactPoints,
@@ -83,6 +84,13 @@ describe("事实层接口参数", () => {
       method: "POST",
       data: { commodityIds, categoryIds },
     }));
+  });
+
+  it.each([TimeRange.The180D, TimeRange.The360D])("%s 时间范围同时发送给列表和点位接口", async (timeRange) => {
+    await getFacts({ TimeRange: timeRange });
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ data: { timeRange } }));
+    getFactPoints({ TimeRange: timeRange });
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ url: "/facts/points", data: { timeRange } }));
   });
 
   it("游标与页码互斥，冲突时不发请求", async () => {

@@ -20,7 +20,9 @@ const VarietySelect = () => {
       disabled={commodities.isPending || commodities.isError}
       notFoundContent={commodities.isError ? "品种加载失败" : "暂无品种"}
       placeholder="全部品种"
-      options={(commodities.data ?? []).map(({ id, name }) => ({ value: id, label: name }))}
+      options={(commodities.data ?? [])
+        .filter(({ status }) => status === "enabled")
+        .map(({ id, name }) => ({ value: id, label: name }))}
       value={varieties}
       onChange={(value) => setFilters({ varieties: value })}
     />
