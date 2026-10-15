@@ -84,4 +84,18 @@ describe("卡片自动轮播", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(options.refresh).toHaveBeenCalledTimes(1);
   });
+  it("占位数据期间保留滚动位置，新卡片落地时才回到顶部", () => {
+    const { element } = setup();
+    element.scrollTop = 120;
+    const next = (overrides: Partial<RecordAutoScrollOptions>) => ({
+      scope: "fact-next", busy: false, hasNextPage: false, hasRecords: true,
+      loadMore: vi.fn(async () => {}), refresh: vi.fn(async () => {}), ...overrides });
+    const ref = { current: element as unknown as HTMLDivElement };
+    // 切换筛选：结果未到，旧卡片继续留在原位。
+    runAutoScroll(ref, true, next({ busy: true, pending: true }));
+    expect(element.scrollTop).toBe(120);
+    // 新卡片替换旧卡片：与内容同帧回到顶部，视觉上只有一次变化。
+    runAutoScroll(ref, true, next({ pending: false }));
+    expect(element.scrollTop).toBe(0);
+  });
 });

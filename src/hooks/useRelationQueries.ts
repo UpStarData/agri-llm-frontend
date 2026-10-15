@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import {
   getEntities,
@@ -18,6 +18,7 @@ import type {
 } from "@/api/relation";
 import { ApiError } from "@/api/request";
 import type { FactView } from "@/api/fact";
+import { getRegionFactView } from "@/utils/factView";
 import { useDashboardStore } from "@/store";
 
 const ENTITY_PAGE_SIZE = 30;
@@ -113,18 +114,16 @@ export const useRelationQueries = (
 
   const graphRequest = filters;
   const enabled = active && Boolean(categories) && Boolean(types);
-  const view: FactView =
-    level === "province" && regionId === "430000"
-      ? "hunan"
-      : level === "world" || (level === "country" && regionId !== "CN")
-        ? "global"
-        : "china";
+  // 只作用于地图查询：图谱/列表不随地图取景变化。
+  const view: FactView = getRegionFactView(level, regionId);
 
   const graph = useQuery({
     queryKey: ["relation", "graph", graphRequest, revision],
     queryFn: async () => relationGraphForView(await getRelationGraph(graphRequest)),
     enabled,
     staleTime: 0,
+    // 筛选切换时保留上一轮图谱，避免整图闪空。
+    placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
 
@@ -138,6 +137,8 @@ export const useRelationQueries = (
       })),
     enabled,
     staleTime: 0,
+    // 同上：地图点位按增删更新，不整层消失再重建。
+    placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
 
@@ -162,6 +163,8 @@ export const useRelationQueries = (
     },
     enabled,
     staleTime: 0,
+    // 筛选切换时保留已加载本体，右侧列表滚动位置与内容都不会闪空。
+    placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
 

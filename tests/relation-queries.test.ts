@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
   setQueryData: vi.fn(),
 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.query, useInfiniteQuery: mocks.infiniteQuery, useQueryClient: () => ({ setQueryData: mocks.setQueryData }) }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.query, useInfiniteQuery: mocks.infiniteQuery, useQueryClient: () => ({ setQueryData: mocks.setQueryData }), keepPreviousData: (previous: unknown) => previous }));
 vi.mock("../src/store", () => ({ useDashboardStore: (selector) => selector(mocks.state) }));
 vi.mock("zustand/react/shallow", () => ({ useShallow: (selector) => selector }));
 vi.mock("../src/api/request", () => ({ request: mocks.request, ApiError: class extends Error {} }));

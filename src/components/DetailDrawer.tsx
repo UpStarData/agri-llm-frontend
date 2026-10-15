@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, CloseOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
@@ -29,12 +29,22 @@ const DetailDrawer = ({ catalogs }: IProps) => {
     <div className="fact-detail" role="region" aria-label={title}>
       <div className="layer-drawer-header">
         <span>{title}</span>
-        <Button
-          className="detail-back"
-          icon={<ArrowLeftOutlined />}
-          aria-label={stack.length > 1 ? "返回上一详情" : "关闭详情"}
-          onClick={stack.length > 1 ? back : () => setOpen(false)}
-        >返回</Button>
+        <div className="detail-header-actions">
+          {stack.length > 1 && (
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              aria-label="返回上一详情"
+              onClick={back}
+            />
+          )}
+          <Button
+            type="text"
+            icon={<CloseOutlined />}
+            aria-label="关闭详情"
+            onClick={() => setOpen(false)}
+          />
+        </div>
       </div>
       <div className="detail-content" key={`${selected.kind}:${selected.id}`}>
         {selected.kind === "fact" ? (

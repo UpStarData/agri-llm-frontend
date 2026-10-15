@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { clampFlatView, getGlobeZoomLimits, getRegionView, isGlobeMaxZoom } from "../src/utils/map";
-import { getLandColor } from "../src/utils/mapLayers";
+import { createMapLayers } from "../src/utils/mapLayers";
+import { regionColorIndices } from "../src/utils/regionColoring";
+import { ECOLOGY_THEME as eco } from "../src/utils/ecologyTheme";
 import { readTheme } from "../src/utils/theme";
+import type { Boundaries, ColorTheme } from "../src/types";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -40,7 +44,25 @@ describe("地图外观与相机边界", () => {
   });
 
   it("主要相邻区域使用不同填色，并适配明暗主题", () => {
-    expect(getLandColor("CN", "light")).not.toEqual(getLandColor("RU", "light"));
-    expect(getLandColor("CN", "light")).not.toEqual(getLandColor("CN", "dark"));
+    const world = JSON.parse(
+      readFileSync("public/boundaries/world.geojson", "utf8"),
+    ) as Boundaries;
+    const indices = regionColorIndices(world, eco.landPalette.length);
+    // 中国与俄罗斯、蒙古接壤，落到同一色板下标就会在图上连成一块。
+    expect(indices.get("CN")).not.toEqual(indices.get("RU"));
+    expect(indices.get("CN")).not.toEqual(indices.get("MN"));
+    // 同一份边界数据必须每次得到同一套配色，否则拖动后区域会换色。
+    expect(regionColorIndices(world, eco.landPalette.length)).toEqual(indices);
+
+    const fillOf = (colorTheme: ColorTheme) => {
+      const layer = createMapLayers({
+        world, level: "world", regionId: "", mode: "fact", colorTheme,
+        select() {}, selectProvince() {},
+      })[0];
+      return (layer.props.getFillColor as (feature: unknown) => number[])(
+        { properties: { regionId: "CN" } },
+      );
+    };
+    expect(fillOf("light")).not.toEqual(fillOf("dark"));
   });
 });

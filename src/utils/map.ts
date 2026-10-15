@@ -1,6 +1,6 @@
 import { WebMercatorViewport } from "@deck.gl/core";
 import type { MapViewState } from "@deck.gl/core";
-import type { Boundaries, MapLevel, Position } from "../types";
+import type { Boundary, Boundaries, MapLevel, Position } from "../types";
 
 export const WORLD_VIEW: MapViewState = {
   longitude: 0,
@@ -15,8 +15,13 @@ export const WORLD_VIEW: MapViewState = {
 export const GLOBE_MIN_ZOOM = -1.2;
 const GLOBE_RADIUS = 256;
 const GLOBE_ALTITUDE = 1.5;
-const GLOBE_SAFE_RATIO = 0.88;
-const GLOBE_INITIAL_RATIO = 0.82;
+/**
+ * 球体的目标占屏比例，按实测反推：拟合公式里的透视与纬度修正还会再压掉约三成，
+ * 直接写 0.88 时球体只渲染到短边的 68%，上下各留 139px 空白。
+ * 这两个值对应「初始 79px、最大 67px 边距」，约为原来的一半。
+ */
+const GLOBE_SAFE_RATIO = 1.2;
+const GLOBE_INITIAL_RATIO = 1.14;
 export function getWheelZoomStep(delta: number): number {
   return Math.sign(delta) * Math.log2(2 / (1 + Math.exp(-Math.abs(delta) * 0.01)));
 }
@@ -114,6 +119,121 @@ export function getGlobeZoomLimits(width: number, height: number, latitude: numb
   );
   return { minZoom: GLOBE_MIN_ZOOM + latitudeOffset, maxZoom: maxZoom + latitudeOffset };
 }
+/** 边界要素的外接矩形，[西南角, 东北角]。 */
+export function getBoundaryBounds(feature: Boundary): [Position, Position] {
+  let minLongitude = Infinity;
+  let minLatitude = Infinity;
+  let maxLongitude = -Infinity;
+  let maxLatitude = -Infinity;
+  const walk = (node: unknown) => {
+    if (!Array.isArray(node)) return;
+    if (typeof node[0] === "number" && typeof node[1] === "number") {
+      minLongitude = Math.min(minLongitude, node[0]);
+      maxLongitude = Math.max(maxLongitude, node[0]);
+      minLatitude = Math.min(minLatitude, node[1]);
+      maxLatitude = Math.max(maxLatitude, node[1]);
+      return;
+    }
+    for (const child of node) walk(child);
+  };
+  walk(feature.geometry.coordinates);
+  return [
+    [minLongitude, minLatitude],
+    [maxLongitude, maxLatitude],
+  ];
+}
+
+/** 外接矩形只随边界数据变化，缓存后每次命中判定不必重扫几万个顶点。 */
+const boundsIndexCache = new WeakMap<
+  Boundaries,
+  { feature: Boundary; bounds: [Position, Position] }[]
+>();
+
+function boundaryIndex(boundaries: Boundaries) {
+  const cached = boundsIndexCache.get(boundaries);
+  if (cached) return cached;
+  const index = boundaries.features.map((feature) => ({
+    feature,
+    bounds: getBoundaryBounds(feature),
+  }));
+  boundsIndexCache.set(boundaries, index);
+  return index;
+}
+
+/** 射线法：点是否落在单个环内。 */
+function ringContainsPosition(
+  ring: Position[],
+  longitude: number,
+  latitude: number,
+): boolean {
+  let inside = false;
+  for (
+    let index = 0, previous = ring.length - 1;
+    index < ring.length;
+    previous = index++
+  ) {
+    const [currentLongitude, currentLatitude] = ring[index];
+    const [previousLongitude, previousLatitude] = ring[previous];
+    if (
+      currentLatitude > latitude !== previousLatitude > latitude &&
+      longitude <
+        ((previousLongitude - currentLongitude) * (latitude - currentLatitude)) /
+          (previousLatitude - currentLatitude) +
+          currentLongitude
+    )
+      inside = !inside;
+  }
+  return inside;
+}
+
+/** 点在面内：外环命中且不落在任何内环洞里。 */
+function boundaryContainsPosition(
+  feature: Boundary,
+  [longitude, latitude]: Position,
+): boolean {
+  const polygons = (
+    feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates]
+      : feature.geometry.coordinates
+  ) as Position[][][];
+  return polygons.some(
+    (polygon) =>
+      polygon.length > 0 &&
+      ringContainsPosition(polygon[0], longitude, latitude) &&
+      !polygon
+        .slice(1)
+        .some((hole) => ringContainsPosition(hole, longitude, latitude)),
+  );
+}
+
+/**
+ * 命中该位置的区域。多块同时命中时取外接矩形最小的一个：
+ * 岛屿常常落在大陆的矩形里，取更紧凑的那块才符合直觉。
+ */
+export function findBoundaryAt(
+  boundaries: Boundaries | undefined,
+  position: Position,
+): Boundary | undefined {
+  if (!boundaries) return undefined;
+  let found: Boundary | undefined;
+  let foundArea = Infinity;
+  for (const { feature, bounds } of boundaryIndex(boundaries)) {
+    if (
+      position[0] < bounds[0][0] ||
+      position[0] > bounds[1][0] ||
+      position[1] < bounds[0][1] ||
+      position[1] > bounds[1][1]
+    )
+      continue;
+    const area = (bounds[1][0] - bounds[0][0]) * (bounds[1][1] - bounds[0][1]);
+    if (area >= foundArea) continue;
+    if (!boundaryContainsPosition(feature, position)) continue;
+    found = feature;
+    foundArea = area;
+  }
+  return found;
+}
+
 export function getRegionView(
   level: MapLevel,
   regionId: string | undefined,
@@ -137,21 +257,7 @@ export function getRegionView(
     );
     if (!feature)
       return { ...WORLD_VIEW, longitude: 112, latitude: 28, zoom: 5, minZoom: getWorldZoom(width, height) };
-    const positions = (
-      feature.geometry.type === "Polygon"
-        ? feature.geometry.coordinates.flat()
-        : feature.geometry.coordinates.flat(2)
-    ) as Position[];
-    bounds = [
-      [
-        Math.min(...positions.map((p) => p[0])),
-        Math.min(...positions.map((p) => p[1])),
-      ],
-      [
-        Math.max(...positions.map((p) => p[0])),
-        Math.max(...positions.map((p) => p[1])),
-      ],
-    ];
+    bounds = getBoundaryBounds(feature);
   }
   const view = new WebMercatorViewport({
     width: Math.max(Number.isFinite(width) ? width : 0, 320),

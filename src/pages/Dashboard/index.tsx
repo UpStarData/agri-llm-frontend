@@ -16,10 +16,10 @@ import ProcessingLog from "./component/ProcessingLog";
 import { useDashboardStore } from "@/store";
 import { useFactList, useFactPoints, useFactTaxonomy } from "@/hooks";
 import dayjs, { DISPLAY_TIMEZONE } from "@/utils/date";
+import { useFactLive } from "@/hooks/useFactLive";
 import { CardTypes, TimeRange } from "@/api/fact";
-import type { FactRequest } from "@/api/fact";
 import { compactCategoryIds, provinceApiCode } from "@/utils/factFilters";
-import { getFactView } from "@/utils/factView";
+import { getFactView, getRegionFactView } from "@/utils/factView";
 import "./index.less";
 
 const MapCanvas = lazy(() => import("@/components/map/MapCanvas"));
@@ -36,6 +36,8 @@ const Dashboard = () => {
     dates,
     keyword,
     videoOnly,
+    level,
+    regionId,
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
@@ -48,6 +50,8 @@ const Dashboard = () => {
       keyword: s.factFilters.keyword,
       videoOnly: s.factFilters.videoOnly,
       dates: s.dateRange,
+      level: s.level,
+      regionId: s.regionId,
     })),
   );
   const taxonomyQuery = useFactTaxonomy();
@@ -61,9 +65,7 @@ const Dashboard = () => {
       dates[1] === today.format("YYYY-MM-DD") &&
       dates[0] === today.subtract(count - 1, "day").format("YYYY-MM-DD"),
   );
-  const factParams: FactRequest = {
-    view: getFactView(countryId, provinceId),
-    Province: provinceId ? provinceApiCode(provinceId) : undefined,
+  const sharedParams = {
     TimeRange: days === undefined ? undefined : ({
       1: TimeRange.Today,
       7: TimeRange.The7D,
@@ -82,8 +84,26 @@ const Dashboard = () => {
   const noCategories =
     excluded.length > 0 && !!taxonomyQuery.data && keptCategoryIds.length === 0;
   const factsActive = !noCategories;
-  const factPoints = useFactPoints(factParams, factsActive);
-  const factList = useFactList(factParams, factsActive, countryId, provinceId);
+  // 地图星点跟地图取景走：点击中国/省份/回到全球只影响地图上展示的那一批点位。
+  const mapProvinceId = level === "province" ? regionId ?? "" : "";
+  const mapParams = {
+    ...sharedParams,
+    view: getRegionFactView(level, regionId),
+    Province: provinceApiCode(mapProvinceId),
+  };
+  const factPoints = useFactPoints(mapParams, factsActive);
+  const factLive = useFactLive(mapParams, mode === "fact" && factsActive);
+  // 右侧卡片跟左侧区域筛选走，与地图取景无关，切换视角时列表保持原样。
+  const factList = useFactList(
+    {
+      ...sharedParams,
+      view: getFactView(countryId, provinceId),
+      Province: provinceId ? provinceApiCode(provinceId) : undefined,
+    },
+    factsActive,
+    countryId,
+    provinceId,
+  );
   const relationCatalogs = useRelationCatalogs();
   const relationQueries = useRelationQueries(
     relationCatalogs.categories.data,
@@ -119,15 +139,22 @@ const Dashboard = () => {
           }
         >
           <MapCanvas
-            points={factPoints.data}
+            points={factsActive ? factPoints.data : undefined}
+            glowingFactIds={factLive.ids}
             data={mode === "relation" ? relationMap : undefined}
             graphData={relationGraph}
             relationTypes={relationCatalogs.types.data}
             focusEntityIds={focusEntityIds}
             relationsPending={
-              relationQueries.graph.isPending || relationQueries.map.isPending
+              relationQueries.graph.isPending ||
+              relationQueries.graph.isPlaceholderData ||
+              relationQueries.map.isPending ||
+              relationQueries.map.isPlaceholderData
             }
-            factsPending={factPoints.isPending && factsActive}
+            factsPending={
+              factsActive &&
+              (factPoints.isPending || factPoints.isPlaceholderData)
+            }
           />
         </Suspense>
         <LeftLayerDrawer>
@@ -141,7 +168,7 @@ const Dashboard = () => {
           )}
         </LeftLayerDrawer>
         {mode === "fact" ? (
-          <RightRecordsDrawer factList={factList} />
+          <RightRecordsDrawer factList={factList} hasNewFacts={factLive.hasNew} dismissNewFacts={factLive.dismiss} />
         ) : (
           <EntityList
             list={relationQueries.list}

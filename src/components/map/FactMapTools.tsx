@@ -47,8 +47,6 @@ const FactMapTools = ({ navigation, fullscreen }: { navigation: ReactNode; fulls
           onClick={() => setOverlay("influence", !influence)}
         />
       </Tooltip>
-      </div>
-      <div className="fact-controls-row">
       <div className="map-search-anchor">
         <form
           className={`map-search-panel${searchOpen ? " is-open" : ""}`}

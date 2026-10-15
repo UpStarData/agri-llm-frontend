@@ -7,8 +7,10 @@ import LayerDrawer from "@/pages/Dashboard/component/LayerDrawer";
 interface IProps {
   factList: ReturnType<typeof useFactList>;
   emptyMessage?: string;
+  hasNewFacts?: boolean;
+  dismissNewFacts?: () => void;
 }
-const RightRecordsDrawer = ({ factList, emptyMessage }: IProps) => {
+const RightRecordsDrawer = ({ factList, emptyMessage, hasNewFacts, dismissNewFacts }: IProps) => {
   const { detailsOpen, selected, select } = useDashboardStore(
     useShallow((s) => ({
       detailsOpen: s.detailsOpen,
@@ -27,6 +29,7 @@ const RightRecordsDrawer = ({ factList, emptyMessage }: IProps) => {
       title="事实项"
       autoScroll={{
         scope: factList.scope,
+        pending: factList.isPlaceholderData,
         busy: factList.isFetching || factList.isFetchingNextPage || factList.isPending,
         hasNextPage: factList.hasNextPage,
         hasRecords: records.length > 0,
@@ -40,6 +43,12 @@ const RightRecordsDrawer = ({ factList, emptyMessage }: IProps) => {
           void factList.fetchNextPage();
       }}
     >
+      {hasNewFacts && (
+        <div className="fact-live-notice" role="status">
+          <span>有新事实加入</span>
+          <Button type="text" size="small" aria-label="关闭新事实提醒" onClick={dismissNewFacts}>×</Button>
+        </div>
+      )}
       {factList.isPending ? (
         <Spin description="正在加载事实卡片" />
       ) : records.length ? (

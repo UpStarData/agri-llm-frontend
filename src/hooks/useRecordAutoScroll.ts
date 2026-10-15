@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 export interface RecordAutoScrollOptions {
   scope: string;
   busy: boolean;
+  /** 当前展示的是上一组筛选条件的占位数据，真实结果尚未到达。 */
+  pending?: boolean;
   hasNextPage: boolean;
   hasRecords: boolean;
   loadMore: () => Promise<unknown>;
@@ -19,10 +21,16 @@ export function useRecordAutoScroll(
   const latest = useRef({ enabled, options });
   useLayoutEffect(() => { latest.current = { enabled, options }; });
   const scope = options?.scope;
+  const pending = Boolean(options?.pending);
+  // 占位数据期间不动滚动位置，等新卡片真正替换旧卡片时再一起回到顶部，
+  // 否则旧内容会先跳一次、稍后又被整批换掉，看起来就是抖一下。
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (!pending && element) element.scrollTop = 0;
+  }, [pending, scope, contentRef]);
   useEffect(() => {
     const element = contentRef.current;
     if (!element || scope === undefined) return;
-    element.scrollTop = 0;
     let stopped = false;
     let running = false;
     let hovered = false;

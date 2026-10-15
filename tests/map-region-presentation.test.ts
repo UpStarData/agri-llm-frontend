@@ -25,11 +25,21 @@ describe("区域取景与点位尺寸", () => {
     expect(getMapPointScale("country")).toBeLessThan(getMapPointScale("province"));
     expect(getMapPointScale("province", true)).toBe(getMapPointScale("world"));
   });
-  it("波纹出生和消失时透明，中途可见且带柔光", () => {
-    const alpha = (phase: number) => (createInfluenceLayers([], phase, false).find((layer) => layer.id === "overlay-influence-ring-0")!.props.getColor as number[])[3];
+  it("波纹出生和消失时透明，中途可见；同时只保留两个波前加一个范围圈", () => {
+    const layers = (phase: number) => createInfluenceLayers([], phase, false);
+    const alpha = (phase: number) => (layers(phase)[0].props.getColor as number[])[3];
     expect(alpha(0)).toBe(0);
     expect(alpha(0.5)).toBeGreaterThan(200);
     expect(alpha(0.9999)).toBe(0);
-    expect(createInfluenceLayers([], 0.5, false).filter((layer) => layer.id.includes("glow"))).toHaveLength(3);
+    expect(layers(0.5).map((layer) => layer.id)).toEqual([
+      "overlay-influence-ripple-0",
+      "overlay-influence-ripple-1",
+      "overlay-influence-boundary",
+    ]);
+    // 范围边界圈不参与扩散：几何更新键不随相位变化，deck.gl 每个周期只重切一次。
+    const trigger = (phase: number, index: number) =>
+      layers(phase)[index].props.updateTriggers!.getPath;
+    expect(trigger(0.1, 2)).toEqual(trigger(0.7, 2));
+    expect(trigger(0.1, 0)).not.toEqual(trigger(0.7, 0));
   });
 });

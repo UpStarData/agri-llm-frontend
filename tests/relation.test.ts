@@ -1,3 +1,4 @@
+import { PathLayer } from "@deck.gl/layers";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   relationColor,
@@ -8,6 +9,7 @@ import {
   prepareRelationPaths,
   createRelationFlowLayer,
   relationPath,
+  revealRelationLayers,
 } from "../src/utils/relationLayers";
 import { useDashboardStore } from "../src/store";
 import type { Entity, Relation } from "../src/types";
@@ -413,5 +415,34 @@ describe("地图路径缓存", () => {
       store.setDrawerOpen(mode, "right", false);
       expect(useDashboardStore.getState().detailsOpen).toBe(true);
     }
+  });
+});
+
+
+describe("关系线从起点向终点绘制", () => {
+  const path = [[0, 0, 0], [10, 10, 100], [20, 0, 0]];
+  const edges = Array.from({ length: 6 }, (_, index) => ({
+    id: String(index), path, color: [20, 150, 100, 255], directed: true,
+  }));
+  const layer = new PathLayer({ id: "real-relations", data: edges });
+  const drawn = (seconds: number) => revealRelationLayers([layer], seconds)[0].props.data as typeof edges;
+  it("首帧不显示整线，首批从源端连续延伸，第六条延迟启动", () => {
+    expect(drawn(0)).toHaveLength(0);
+    const early = drawn(0.12);
+    expect(early).toHaveLength(5);
+    expect(early[0].path[0]).toEqual(path[0]);
+    expect(early[0].path.at(-1)).toEqual([2, 2, 20]);
+    expect(drawn(0.3)).toHaveLength(6);
+    expect(drawn(0.6)[0].path.at(-1)).toEqual(path[1]);
+    expect(edges[0].path).toBe(path);
+  });
+  it("到达终点后保留完整线条，减少动态效果时直接展示", () => {
+    expect(drawn(2)[0]).toBe(edges[0]);
+    expect(drawn(2)[5].path.at(-1)).toEqual(path[2]);
+    expect(revealRelationLayers([layer], Infinity)[0]).toBe(layer);
+  });
+  it("绘制途中不提前在终点播放流光", () => {
+    expect(createRelationFlowLayer(revealRelationLayers([layer], 0.6), 1).props.data).toHaveLength(0);
+    expect(createRelationFlowLayer(revealRelationLayers([layer], 2), 2).props.data).toHaveLength(6);
   });
 });

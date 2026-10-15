@@ -1,27 +1,17 @@
 import { useState } from "react";
-import { Button, Input } from "antd";
+import { Button, Input, Tooltip } from "antd";
 import {
   SearchOutlined,
   CloseOutlined,
-  PushpinOutlined,
+  BranchesOutlined,
 } from "@ant-design/icons";
 import { useDashboardStore } from "@/store";
 const RelationMapTools = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const filters = useDashboardStore((s) => s.relationFilters);
   const setFilters = useDashboardStore((s) => s.setRelationFilters);
-  const ports = useDashboardStore((s) => s.mapOverlayVisibility.ports);
-  const setOverlay = useDashboardStore((s) => s.setMapOverlayVisibility);
   return (
     <>
-      <Button
-        type={ports ? "primary" : "text"}
-        shape="circle"
-        icon={<PushpinOutlined />}
-        aria-label="港口锚点"
-        aria-pressed={ports}
-        onClick={() => setOverlay("ports", !ports)}
-      />
       <div className="map-search-anchor">
         <Button
           type="text"
@@ -34,6 +24,7 @@ const RelationMapTools = () => {
         {searchOpen && (
           <div className="map-search-panel is-open">
             <Input.Search
+              autoFocus
               aria-label="按本体名称搜索"
               placeholder="输入本体名称"
               defaultValue={filters.keyword}
@@ -55,6 +46,9 @@ const RelationMapTools = () => {
           </div>
         )}
       </div>
+      <Tooltip title="跨区域关系">
+        <Button type="text" shape="circle" icon={<BranchesOutlined />} aria-label="跨区域关系" aria-pressed={filters.crossRegion} onClick={() => setFilters({ crossRegion: !filters.crossRegion })} />
+      </Tooltip>
     </>
   );
 };

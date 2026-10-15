@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test && vite build",
-    "import:boundaries": "node scripts/import-boundaries.mjs"
+    "import:boundaries": "node scripts/import-boundaries.mjs",
+    "import:world": "node scripts/import-world-boundaries.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.4",

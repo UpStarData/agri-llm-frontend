@@ -22,6 +22,7 @@ import MapControls from "@/components/map/MapControls";
 import RelationGraphCanvas from "@/components/map/RelationGraphCanvas";
 import DashboardHeader from "../DashboardHeader";
 import { mapScale } from "@/utils/impact";
+import { getRegionFactView } from "@/utils/factView";
 import GlobeBackdrop from "./GlobeBackdrop";
 import type { MapData } from "@/types";
 import type { RelationTypeCatalog } from "@/api/relation";
@@ -50,6 +51,7 @@ interface IProps {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
   graphData?: Pick<MapData, "entities" | "relations">;
   points?: FactPoint[];
+  glowingFactIds?: string[];
   factsPending: boolean;
   relationsPending?: boolean;
   focusEntityIds?: string[];
@@ -60,6 +62,7 @@ const MapCanvas = ({
   data,
   graphData,
   points,
+  glowingFactIds,
   factsPending,
   relationsPending,
   focusEntityIds,
@@ -78,7 +81,6 @@ const MapCanvas = ({
     factGeoKinds,
     level,
     regionId,
-    setFactRegion,
     setRegion,
     setHighlightedEntity,
   } = useDashboardStore(
@@ -89,7 +91,6 @@ const MapCanvas = ({
       factGeoKinds: s.factGeoKinds,
       level: s.level,
       regionId: s.regionId,
-      setFactRegion: s.setFactRegion,
       setRegion: s.setRegion,
       setHighlightedEntity: s.setHighlightedEntity,
     })),
@@ -110,16 +111,14 @@ const MapCanvas = ({
     },
     [mode],
   );
+  // 地图点击只切换取景（中国/全球/湖南视角），右侧卡片沿用左侧区域筛选，不跟着变。
   const changeRegion = useCallback(
-    (countryId: string, provinceId?: string) => {
-      if (mode === "fact") setFactRegion(countryId, provinceId);
-      else
-        setRegion(
-          provinceId ? "province" : countryId ? "country" : "world",
-          provinceId || countryId || undefined,
-        );
-    },
-    [mode, setFactRegion, setRegion],
+    (countryId: string, provinceId?: string) =>
+      setRegion(
+        provinceId ? "province" : countryId ? "country" : "world",
+        provinceId || countryId || undefined,
+      ),
+    [setRegion],
   );
   const flatWorld = level === "world" && !isGlobe;
   const visibleGeoKinds = useMemo(() => (
@@ -134,12 +133,7 @@ const MapCanvas = ({
       !(kind === "port" && level === "province"),
   ), [mode, mapOverlayVisibility.ports, factGeoKinds, level]);
   const geoRequest: GeoPointsRequest = {
-    view:
-      level === "world" || (level === "country" && regionId !== "CN")
-        ? "global"
-        : level === "province" && regionId === "430000"
-          ? "hunan"
-          : "china",
+    view: getRegionFactView(level, regionId),
     ...(visibleGeoKinds.length
       ? { kinds: visibleGeoKinds as [GeoPointKind, ...GeoPointKind[]] }
       : {}),
@@ -149,6 +143,9 @@ const MapCanvas = ({
     () => geoPoints.data?.filter((point) => visibleGeoKinds.includes(point.kind)),
     [geoPoints.data, visibleGeoKinds],
   );
+  const geoPending =
+    visibleGeoKinds.length > 0 &&
+    (geoPoints.isPending || geoPoints.isPlaceholderData);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -184,6 +181,7 @@ const MapCanvas = ({
   const layers = useMapLayers({
     data,
     points,
+  glowingFactIds,
     world: world.data,
     china: china.data,
     geoPoints: visibleGeoPoints,
@@ -249,11 +247,8 @@ const MapCanvas = ({
             const next = viewState as MapViewState;
             markInteraction();
             // 保留控制器的 transition 字段，否则会打断原生惯性和滚轮平滑。
-            if (
-              interactionState.isZooming &&
-              (isGlobe || next.zoom < (cameraRef.current ?? target).zoom)
-            )
-              setZoom(next);
+            // 控制器发起的缩放（双指、双击）同样走 setZoom：放大时和滚轮一样能下钻。
+            if (interactionState.isZooming) setZoom(next);
             else setCamera(next);
           }}
           onError={(e) => setGpuError(e.message)}
@@ -280,18 +275,16 @@ const MapCanvas = ({
           <Alert type="error" title="地图渲染失败" description={gpuError} />
         </div>
       )}
-      {mode === "fact" &&
-        (factsPending ||
-          (visibleGeoKinds.length > 0 && geoPoints.isPending)) && (
-          <div className="map-api-status">
-            {factsPending && (
-              <Spin size="small" description="正在加载事实星点" />
-            )}
-            {visibleGeoKinds.length > 0 && geoPoints.isPending && (
-              <Spin size="small" description="正在加载叠加点位" />
-            )}
-          </div>
-        )}
+      {mode === "fact" && (factsPending || geoPending) && (
+        <div className="map-api-status">
+          {factsPending && (
+            <Spin size="small" description="正在加载事实星点" />
+          )}
+          {geoPending && (
+            <Spin size="small" description="正在加载叠加点位" />
+          )}
+        </div>
+      )}
       {mode === "relation" && relationsPending && (
         <div className="map-api-status">
           <Spin size="small" description="正在加载关联数据" />

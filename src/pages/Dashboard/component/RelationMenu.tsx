@@ -3,7 +3,10 @@ import VarietySelect from "./VarietySelect";
 import { Button, Checkbox, Collapse, Space, Spin } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
-import type { useRelationCatalogs, useRelationQueries } from "@/hooks/useRelationQueries";
+import type {
+  useRelationCatalogs,
+  useRelationQueries,
+} from "@/hooks/useRelationQueries";
 import { relationColor, relationDomainInfo } from "@/utils/relationFilters";
 interface IProps {
   count: ReturnType<typeof useRelationQueries>["count"];
@@ -21,7 +24,8 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
   const { relationTypes, relationTypeIds, relationGroups } = useMemo(() => {
     const relationTypes = catalogs.types.data?.types ?? [];
     const relationTypeIds = relationTypes.map((type) => type.id);
-    const relationGroups: { domain: string; types: typeof relationTypes }[] = [];
+    const relationGroups: { domain: string; types: typeof relationTypes }[] =
+      [];
     for (const type of relationTypes) {
       const last = relationGroups.at(-1);
       if (last?.domain === type.colorDomain) last.types.push(type);
@@ -30,15 +34,14 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
     return { relationTypes, relationTypeIds, relationGroups };
   }, [catalogs.types.data]);
 
-  const { excluded, filters, setExcluded, setFilters } =
-    useDashboardStore(
-      useShallow((s) => ({
-        excluded: s.excludedFilterIds.relation,
-        filters: s.relationFilters,
-        setExcluded: s.setExcludedFilterIds,
-        setFilters: s.setRelationFilters,
-      })),
-    );
+  const { excluded, filters, setExcluded, setFilters } = useDashboardStore(
+    useShallow((s) => ({
+      excluded: s.excludedFilterIds.relation,
+      filters: s.relationFilters,
+      setExcluded: s.setExcludedFilterIds,
+      setFilters: s.setRelationFilters,
+    })),
+  );
   const changeGroup = (ids: string[], checked: boolean) =>
     setExcluded(
       "relation",
@@ -58,12 +61,9 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
               ["当前本体", count.data?.entityTotal],
               ["今日新增本体", count.data?.todayNewEntities],
               ["今日新增关系", count.data?.todayNewRelations],
-            ].map(([label, value], index) => (
-              <div
-                className="overview-metric"
-                key={label}
-              >
-                <span className={`overview-count${index === 1 ? " overview-count-new" : index === 2 ? " overview-count-relations" : ""}`}>{value ?? "—"}</span>
+            ].map(([label, value]) => (
+              <div className="overview-metric" key={label}>
+                <span className={`overview-count`}>{value ?? "—"}</span>
                 <span>{label}</span>
               </div>
             ))}
@@ -95,51 +95,60 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
             </Button>
           </div>
         </div>
-        {catalogs.categories.isPending ? <Spin size="small" /> : catalogs.categories.isError && !entityGroups.length ? (
-          null
-        ) : <Collapse
-          ghost
-          size="small"
-          defaultActiveKey={[entityGroups[0]?.id]}
-          items={entityGroups.map(({ id, name, children }, i) => ({
-            key: id,
-            label: (
-              <span
-                className={`filter-section-title filter-section-${["blue", "green", "cyan", "coral"][i]}`}
-              >
-                {name}
-              </span>
-            ),
-            extra: (
-              <Checkbox
-                aria-label={`选择${name}`}
-                checked={children.every(({ id }) => !excluded.includes(id))}
-                indeterminate={
-                  children.some(({ id }) => !excluded.includes(id)) &&
-                  children.some(({ id }) => excluded.includes(id))
-                }
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => changeGroup(children.map((child) => child.id), e.target.checked)}
-              />
-            ),
-            children: (
-              <div className="drawer-filter-options">
-                {children.map((type) => (
-                  <Button
-                    key={type.id}
-                    size="small"
-                    title={type.name}
-                    className={`filter-chip${excluded.includes(type.id) ? " is-off" : ""}`}
-                    aria-pressed={!excluded.includes(type.id)}
-                    onClick={() => changeGroup([type.id], excluded.includes(type.id))}
-                  >
-                    {type.name}
-                  </Button>
-                ))}
-              </div>
-            ),
-          }))}
-        />}
+        {catalogs.categories.isPending ? (
+          <Spin size="small" />
+        ) : catalogs.categories.isError && !entityGroups.length ? null : (
+          <Collapse
+            ghost
+            size="small"
+            defaultActiveKey={[entityGroups[0]?.id]}
+            items={entityGroups.map(({ id, name, children }, i) => ({
+              key: id,
+              label: (
+                <span
+                  className={`filter-section-title filter-section-${["blue", "green", "cyan", "coral"][i]}`}
+                >
+                  {name}
+                </span>
+              ),
+              extra: (
+                <Checkbox
+                  aria-label={`选择${name}`}
+                  checked={children.every(({ id }) => !excluded.includes(id))}
+                  indeterminate={
+                    children.some(({ id }) => !excluded.includes(id)) &&
+                    children.some(({ id }) => excluded.includes(id))
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) =>
+                    changeGroup(
+                      children.map((child) => child.id),
+                      e.target.checked,
+                    )
+                  }
+                />
+              ),
+              children: (
+                <div className="drawer-filter-options">
+                  {children.map((type) => (
+                    <Button
+                      key={type.id}
+                      size="small"
+                      title={type.name}
+                      className={`filter-chip${excluded.includes(type.id) ? " is-off" : ""}`}
+                      aria-pressed={!excluded.includes(type.id)}
+                      onClick={() =>
+                        changeGroup([type.id], excluded.includes(type.id))
+                      }
+                    >
+                      {type.name}
+                    </Button>
+                  ))}
+                </div>
+              ),
+            }))}
+          />
+        )}
       </div>
       <div className="menu-section">
         <div className="menu-section-title">品种选择</div>
@@ -171,46 +180,48 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
             </Button>
           </div>
         </div>
-        {catalogs.types.isPending ? <Spin size="small" /> : catalogs.types.isError && !relationTypes.length ? (
-          null
-        ) : relationGroups.map(({ domain, types }, groupIndex) => (
-          <div className="drawer-filter-group" key={`${domain}-${groupIndex}`}>
-            <Space size="small">
-              <span style={{ color: `rgb(${relationColor("", undefined, domain).join(",")})` }}>●</span>
-              <span className="filter-group-name">{relationDomainInfo[domain]?.name ?? domain}</span>
-            </Space>
-            <div className="drawer-filter-options">
-              {types.map((type) => (
-                <Button
-                  key={type.id}
-                  size="small"
-                  className={`filter-chip${filters.excludedTypes.includes(type.id) ? " is-off" : ""}`}
-                  aria-pressed={!filters.excludedTypes.includes(type.id)}
-                  onClick={() =>
-                    setFilters({
-                      excludedTypes: filters.excludedTypes.includes(type.id)
-                        ? filters.excludedTypes.filter((id) => id !== type.id)
-                        : [...filters.excludedTypes, type.id],
-                    })
-                  }
+        {catalogs.types.isPending ? (
+          <Spin size="small" />
+        ) : catalogs.types.isError && !relationTypes.length ? null : (
+          relationGroups.map(({ domain, types }, groupIndex) => (
+            <div
+              className="drawer-filter-group"
+              key={`${domain}-${groupIndex}`}
+            >
+              <Space size="small">
+                <span
+                  style={{
+                    color: `rgb(${relationColor("", undefined, domain).join(",")})`,
+                  }}
                 >
-                  {type.name}
-                </Button>
-              ))}
+                  ●
+                </span>
+                <span className="filter-group-name">
+                  {relationDomainInfo[domain]?.name ?? domain}
+                </span>
+              </Space>
+              <div className="drawer-filter-options">
+                {types.map((type) => (
+                  <Button
+                    key={type.id}
+                    size="small"
+                    className={`filter-chip${filters.excludedTypes.includes(type.id) ? " is-off" : ""}`}
+                    aria-pressed={!filters.excludedTypes.includes(type.id)}
+                    onClick={() =>
+                      setFilters({
+                        excludedTypes: filters.excludedTypes.includes(type.id)
+                          ? filters.excludedTypes.filter((id) => id !== type.id)
+                          : [...filters.excludedTypes, type.id],
+                      })
+                    }
+                  >
+                    {type.name}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <div className="menu-section">
-        <div className="menu-section-title">视图控制</div>
-        <div className="drawer-control-header">
-          <span>跨区域关系</span>
-          <Checkbox
-            aria-label="跨区域关系"
-            checked={filters.crossRegion}
-            onChange={(event) => setFilters({ crossRegion: event.target.checked })}
-          />
-        </div>
+          ))
+        )}
       </div>
     </>
   );

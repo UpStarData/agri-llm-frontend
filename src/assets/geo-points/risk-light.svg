@@ -1,0 +1,11 @@
+<!-- 地缘风险区（亮色）/ 警示三角 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- 白色描边层：先整组画一遍，再用主题色盖在上面，得到不依赖底图的白色轮廓。 -->
+  <g fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round">
+    <path fill-rule="evenodd" d="M24 4.5 45.5 42h-43zM22.3 16.5h3.4v13h-3.4zM26.2 35.5a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0Z"/>
+  </g>
+  <!-- 主题色填充层：子图形必须保持各自独立元素，同一 path 内的多条子路径会被 evenodd 挖空。 -->
+  <g fill="#FF6B6B">
+    <path fill-rule="evenodd" d="M24 4.5 45.5 42h-43zM22.3 16.5h3.4v13h-3.4zM26.2 35.5a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0Z"/>
+  </g>
+</svg>

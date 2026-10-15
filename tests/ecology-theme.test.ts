@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createMapLayers, createInfluenceLayers } from "../src/utils/mapLayers";
 import { createRelationLayers, createRelationFlowLayer, prepareRelationPaths } from "../src/utils/relationLayers";
 import type { Entity, Relation } from "../src/types";
-import { ECOLOGY_THEME as eco, rgb } from "../src/utils/ecologyTheme";
+import { ECOLOGY_THEME as eco, rgb, rgba } from "../src/utils/ecologyTheme";
 
 const entities: Entity[] = [
   { id: "farm", name: "基地", type: "production_base", position: [112, 28], factIds: [] },
@@ -43,21 +43,22 @@ describe("生态亮色主题集成", () => {
     const particles = createRelationFlowLayer(layers, 0.25).props.data as { color: number[] }[];
     expect(particles[0].color).toEqual(edges[0].color);
   });
-  it("相同节点数据切主题时刷新 GPU 属性，仅选中节点有额外描边", () => {
+  it("两种主题节点均为白色黑边，选中节点加粗描边", () => {
     const dark = createRelationLayers({ ...options, colorTheme: "dark" });
     const light = createRelationLayers({ ...options, colorTheme: "light", highlightedEntityId: "farm" });
     const node = light.find((layer) => layer.id === "real-entities")!;
     const old = dark.find((layer) => layer.id === "real-entities")!;
     expect(node.props.updateTriggers!.getFillColor).not.toEqual(old.props.updateTriggers!.getFillColor);
     expect(node.props.updateTriggers!.getRadius).not.toEqual(old.props.updateTriggers!.getRadius);
-    const fill = node.props.getFillColor as (entity: Entity) => number[];
     const width = node.props.getLineWidth as (entity: Entity) => number;
-    expect(fill(entities[0]).slice(0, 3)).toEqual(rgb(eco.production));
-    expect(fill(entities[1]).slice(0, 3)).toEqual(rgb(eco.hub));
-    expect(fill(entities[2]).slice(0, 3)).toEqual(rgb(eco.anomaly));
-    expect(width(entities[0])).toBe(5);
-    expect(width(entities[1])).toBe(2);
-    expect(width(entities[2])).toBe(0);
+    for (const layer of [node, old]) {
+      expect(layer.props.getFillColor).toEqual([255, 255, 255, 255]);
+      expect(layer.props.getLineColor).toEqual([0, 0, 0, 255]);
+      expect(layer.props.stroked).toBe(true);
+    }
+    expect(width(entities[0])).toBe(2);
+    expect(width(entities[1])).toBe(1);
+    expect(width(entities[2])).toBe(1);
   });
   it("亮暗切换保留拾取回调和底图 ID，选中区域透明且触发器含主题", () => {
     const selections: string[] = [];
@@ -71,13 +72,21 @@ describe("生态亮色主题集成", () => {
     world.props.onClick!({ object: { properties: { regionId: "CN" } } } as never, {} as never);
     expect(selections).toEqual(["CN"]);
     expect(world.props.updateTriggers!.getFillColor).toContain("light");
-    expect(world.props.getLineColor).toEqual(rgb(eco.borderCountry));
+    expect(world.props.getLineColor).toEqual(rgba(eco.borderCountry, 140));
   });
   it("影响圈动画在两个主题中保留 ID、数据和不可拾取状态", () => {
     const light = createInfluenceLayers([], 0.2, false, "light");
     const dark = createInfluenceLayers([], 0.2, false, "dark");
     expect(light.map((layer) => layer.id)).toEqual(dark.map((layer) => layer.id));
-    expect(light[1].props.getColor).toEqual([...rgb(eco.priorityRoute), Math.round(Math.sin(Math.PI * 0.2) ** 1.4 * 210)]);
+    // 两个波前在周期内错开半个相位，各自按自己的相位取透明度。
+    const rippleProgress = [0.2, 0.7];
+    rippleProgress.forEach((progress, index) => {
+      expect(light[index].props.getColor).toEqual([
+        ...rgb(eco.priorityRoute),
+        Math.round(Math.sin(Math.PI * progress) ** 1.4 * 210),
+      ]);
+    });
+    expect(light[2].props.getColor).toEqual([...rgb(eco.priorityRoute), 45]);
     expect(light.every((layer) => !layer.props.pickable)).toBe(true);
     expect(light[0].props.updateTriggers!.getColor).toEqual([0.2, "light"]);
   });

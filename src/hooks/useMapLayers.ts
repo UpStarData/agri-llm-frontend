@@ -1,4 +1,3 @@
-import { ECOLOGY_THEME as eco, geoThemeColor, rgba } from "@/utils/ecologyTheme";
 import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -6,24 +5,31 @@ import {
   WebMercatorViewport,
 } from "@deck.gl/core";
 import type { MapViewState } from "@deck.gl/core";
-import { ScatterplotLayer } from "@deck.gl/layers";
+import { IconLayer } from "@deck.gl/layers";
 import { useDashboardStore } from "@/store";
 import type { Boundaries, MapData } from "@/types";
-import type { FactPoint, GeoPoint, GeoPointKind } from "@/api/fact";
+import type { FactPoint, GeoPoint } from "@/api/fact";
 import type { RelationTypeCatalog } from "@/api/relation";
 import { getMapPointScale, flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
+import { getKmPerPixel } from "@/utils/impact";
 import { layoutFactPoints } from "@/utils/factPointLayout";
+import { geoPointIcon } from "@/utils/geoPointIcons";
 import { createGlobeSurface } from "@/utils/globeSurface";
-import { createMapLayers, createInfluenceLayers } from "@/utils/mapLayers";
+import { createMapLayers, createInfluenceLayers, applyFactPointLayout } from "@/utils/mapLayers";
 import {
   createRelationLayers,
   prepareRelationPaths,
   createRelationFlowLayer,
+  revealRelationLayers,
 } from "@/utils/relationLayers";
+
+/** 影响圆单次扩散的周期（秒）。 */
+const INFLUENCE_CYCLE_SECONDS = 3.6;
 
 interface Options {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
   points?: FactPoint[];
+  glowingFactIds?: string[];
   world?: Boundaries;
   china?: Boundaries;
   geoPoints?: GeoPoint[];
@@ -39,17 +45,11 @@ interface Options {
   changeRegion: (countryId: string, provinceId?: string) => void;
 }
 
-const geoColors: Record<GeoPointKind, [number, number, number, number]> = {
-  region: [98, 210, 120, 220],
-  port: [81, 175, 230, 220],
-  airport: [164, 148, 235, 220],
-  market: [245, 171, 91, 220],
-  risk: [245, 100, 100, 220],
-};
 /** 按更新频率组织图层：底图、路径、可见性、动画各自缓存。 */
 export function useMapLayers({
   data,
   points,
+  glowingFactIds,
   world,
   china,
   geoPoints,
@@ -89,7 +89,9 @@ export function useMapLayers({
   );
   const pointScale = getMapPointScale(level, isGlobe);
   const [animationSeconds, setAnimationSeconds] = useState(0);
-  const influencePhase = (animationSeconds / 2.4) % 1;
+  const influencePhase = (animationSeconds / INFLUENCE_CYCLE_SECONDS) % 1;
+  // 影响圆的采样密度按当前视图比例换算，屏幕上的圆有多大就切多少段。
+  const influenceKmPerPixel = getKmPerPixel(camera.zoom, camera.latitude);
   const flatWorldBoundaries = useMemo(
     () => (world && flatWorld ? flattenWorldBoundaries(world) : world),
     [world, flatWorld],
@@ -110,7 +112,8 @@ export function useMapLayers({
     let frame = 0;
     let last = 0;
     const tick = (now: number) => {
-      if (now - last > 32) {
+      // 逐帧推进：球体自转是 60fps，波纹按 30fps 跳步会和自转之间形成肉眼可见的顿挫。
+      if (now - last > 16) {
         setAnimationSeconds(now / 1000);
         last = now;
       }
@@ -154,6 +157,7 @@ export function useMapLayers({
         world: flatWorldBoundaries,
         china: china,
         points,
+        glowingFactIds,
         selectedFactId: selection?.kind === "fact" ? selection.id : undefined,
         flatWorld,
         level,
@@ -179,6 +183,7 @@ export function useMapLayers({
       flatWorldBoundaries,
       china,
       points,
+      glowingFactIds,
       selection,
       flatWorld,
       isGlobe,
@@ -215,16 +220,36 @@ export function useMapLayers({
       },
       pointScale,
     );
-    return baseLayers.map((layer) => layer.id === "real-facts"
-      ? (layer as ScatterplotLayer<FactPoint>).clone({
-          getPosition: (point: FactPoint) => positions.get(point) ??
-            (flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint),
-          radiusScale: pointScale,
-          getRadius: (point: FactPoint) => positions.has(point) ? 3 : 5,
-          updateTriggers: { ...layer.props.updateTriggers, getPosition: [positions], getRadius: [positions] },
-        })
-      : layer);
+    return applyFactPointLayout(baseLayers, positions, pointScale, flatWorld);
   }, [mode, points, viewport, flatWorld, baseLayers, isGlobe, camera.latitude, camera.longitude, pointScale]);
+
+  // 用关系 ID 集合标识一轮展示；拖动相机、普通数据刷新不会重新播放。
+  const relationRevealKey = JSON.stringify([mode, level, regionId, data?.relations.map((relation) => relation.id)]);
+  const relationCount = data?.relations.length ?? 0;
+  const [reveal, setReveal] = useState({ key: "", seconds: 0 });
+  const revealSeconds = reveal.key === relationRevealKey ? reveal.seconds : 0;
+  useEffect(() => {
+    if (mode !== "relation") {
+      setReveal({ key: "", seconds: 0 });
+      return;
+    }
+    if (!relationCount) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setReveal({ key: relationRevealKey, seconds: Infinity });
+      return;
+    }
+    let frame = 0;
+    let start: number | undefined;
+    const duration = Math.floor((relationCount - 1) / 5) * 0.18 + 1.2;
+    const tick = (now: number) => {
+      start ??= now;
+      const seconds = (now - start) / 1000;
+      setReveal({ key: relationRevealKey, seconds: seconds >= duration ? Infinity : seconds });
+      if (seconds < duration) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [mode, relationRevealKey, relationCount]);
 
   const relationPaths = useMemo(
     () =>
@@ -282,16 +307,20 @@ export function useMapLayers({
       changeRegion,
     ],
   );
+  const revealedRelationLayers = useMemo(
+    () => revealRelationLayers(relationLayers, revealSeconds),
+    [relationLayers, revealSeconds],
+  );
   const flowLayer = useMemo(
     () =>
       mode === "relation"
-        ? createRelationFlowLayer(relationLayers, animationSeconds)
+        ? createRelationFlowLayer(revealedRelationLayers, animationSeconds)
         : null,
-    [mode, relationLayers, animationSeconds],
+    [mode, revealedRelationLayers, animationSeconds],
   );
   const geoLayer = useMemo(
     () =>
-      new ScatterplotLayer<GeoPoint>({
+      new IconLayer<GeoPoint>({
         id: "fact-geo-points",
         data:
           mode === "fact" || mapOverlayVisibility.ports
@@ -300,17 +329,19 @@ export function useMapLayers({
               )
             : [],
         pickable: true,
+        billboard: true,
+        sizeUnits: "pixels",
+        sizeBasis: "height",
         getPosition: (point) =>
           flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint,
-        getRadius: 7,
-        radiusScale: pointScale,
-        radiusUnits: "pixels",
-        getFillColor: (point) => colorTheme === "light" ? rgba(geoThemeColor(point.kind), 235) : geoColors[point.kind],
-        stroked: colorTheme === "light",
-        getLineColor: rgba(eco.panel, 240),
-        getLineWidth: (point) => point.kind === "port" || point.kind === "airport" ? 2 : 0,
-        lineWidthUnits: "pixels",
-        updateTriggers: { getFillColor: colorTheme, getPosition: flatWorld },
+        getIcon: (point) => geoPointIcon(point.kind, colorTheme),
+        getSize: 24,
+        sizeScale: pointScale,
+        // 图标自带主题色，这里不再着色，只保留不透明度。
+        getColor: [255, 255, 255, 240],
+        // SVG 固定走 HTMLImageElement 解码：部分浏览器不支持把 SVG 转成 ImageBitmap。
+        loadOptions: { image: { type: "image" } },
+        updateTriggers: { getIcon: colorTheme, getPosition: flatWorld },
       }),
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -319,17 +350,17 @@ export function useMapLayers({
   const influenceLayers = useMemo(
     () =>
       mode === "fact" && mapOverlayVisibility.influence
-        ? createInfluenceLayers(points ?? [], influencePhase, flatWorld, colorTheme)
+        ? createInfluenceLayers(points ?? [], influencePhase, flatWorld, colorTheme, influenceKmPerPixel)
         : [],
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe, colorTheme],
+    [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe, colorTheme, influenceKmPerPixel],
   );
   return [
     oceanLayer,
     ...renderedBaseLayers,
     ...influenceLayers,
-    ...relationLayers,
+    ...revealedRelationLayers,
     flowLayer,
     geoLayer,
   ];

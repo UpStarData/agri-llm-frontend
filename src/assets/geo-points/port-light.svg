@@ -1,0 +1,17 @@
+<!-- 港口（亮色）/ 锚 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- 白色描边层：先整组画一遍，再用主题色盖在上面，得到不依赖底图的白色轮廓。 -->
+  <g fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round">
+    <path fill-rule="evenodd" d="M29.5 7.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Zm-3 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/>
+    <rect x="21.7" y="11.5" width="4.6" height="23" rx="1"/>
+    <rect x="13" y="15.4" width="22" height="3.6" rx="1.8"/>
+    <path d="M8 21.6c0 12 7.2 19 16 19s16-7 16-19h-5c0 8.8-4.9 14.2-11 14.2S13 30.4 13 21.6Z"/>
+  </g>
+  <!-- 主题色填充层：子图形必须保持各自独立元素，同一 path 内的多条子路径会被 evenodd 挖空。 -->
+  <g fill="#008BD9">
+    <path fill-rule="evenodd" d="M29.5 7.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Zm-3 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z"/>
+    <rect x="21.7" y="11.5" width="4.6" height="23" rx="1"/>
+    <rect x="13" y="15.4" width="22" height="3.6" rx="1.8"/>
+    <path d="M8 21.6c0 12 7.2 19 16 19s16-7 16-19h-5c0 8.8-4.9 14.2-11 14.2S13 30.4 13 21.6Z"/>
+  </g>
+</svg>

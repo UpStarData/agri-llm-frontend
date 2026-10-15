@@ -1,4 +1,4 @@
-import { ECOLOGY_THEME as eco, entityThemeColor, isLogisticsHub, rgba } from "./ecologyTheme";
+import { isLogisticsHub } from "./ecologyTheme";
 import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import type { ColorTheme, Entity, Relation, Position, Selection } from "@/types";
@@ -254,24 +254,11 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       getRadius: (e) => light ? (e.id === highlightedEntityId ? 9 : isLogisticsHub(e) ? 7 : 5) : 6,
       radiusUnits: "pixels",
       radiusScale: options.pointScale ?? 1,
-      getFillColor: (e) =>
-        light ? rgba(entityThemeColor(e), !highlightedEntityId || neighbors.has(e.id) ? 245 : 60) :
-        glowingEntityIds.includes(e.id)
-          ? [255, 236, 169, 255]
-          : [
-              239,
-              185,
-              102,
-              !highlightedEntityId || neighbors.has(e.id) ? 255 : 60,
-            ],
+      getFillColor: [255, 255, 255, 255],
       stroked: true,
-      getLineColor: (e) =>
-        light ? (e.id === highlightedEntityId ? rgba(eco.selected, 140) : isLogisticsHub(e) ? rgba(eco.panel, !highlightedEntityId || neighbors.has(e.id) ? 245 : 60) : rgba(eco.panel, 0)) :
-        e.id === highlightedEntityId
-          ? [255, 255, 255, 255]
-          : [239, 185, 102, 0],
+      getLineColor: [0, 0, 0, 255],
       lineWidthUnits: "pixels",
-      getLineWidth: (e) => light ? (e.id === highlightedEntityId ? 5 : isLogisticsHub(e) ? 2 : 0) : 2,
+      getLineWidth: (e) => e.id === highlightedEntityId ? 2 : 1,
       onClick: ({ object }) => {
         if (object) select({ kind: "entity", id: object.id });
       },
@@ -306,6 +293,27 @@ export function prepareRelationPaths(
   return paths;
 }
 
+/** 每批 5 条，每隔 180ms 启动；每条沿缓存路径从源端绘制至目标端。 */
+export function revealRelationLayers(layers: Layer[], elapsedSeconds: number): Layer[] {
+  if (elapsedSeconds === Infinity) return layers;
+  return layers.map((layer) => {
+    if (layer.id !== "real-relations") return layer;
+    const edges = layer.props.data as { path: number[][]; [key: string]: unknown }[];
+    const data = edges.flatMap((edge, index) => {
+      const progress = Math.min(1, Math.max(0, (elapsedSeconds - Math.floor(index / 5) * 0.18) / 1.2));
+      if (progress <= 0) return [];
+      if (progress >= 1) return [edge];
+      const lastIndex = Math.floor(progress * (edge.path.length - 1));
+      return [{
+        ...edge,
+        drawing: true,
+        path: [...edge.path.slice(0, lastIndex + 1), at(edge.path, progress)],
+      }];
+    });
+    return layer.clone({ data });
+  });
+}
+
 // 按关系 ID 和方向生成稳定的伪随机时序，筛选、重绘不会重新抽签。
 function flowTiming(id: string, reverse: boolean) {
   let seed = 2166136261;
@@ -327,11 +335,12 @@ export function createRelationFlowLayer(layers: Layer[], elapsedSeconds: number)
         path: number[][];
         color: [number, number, number, number];
         directed: boolean;
+        drawing?: boolean;
       }[]
     | undefined;
   // 一次流动覆盖约 22% 的曲线。尾端透明、主体渐宽、前端收尖。
   // 起点处截短尾迹，避免循环时跨越首尾产生贯穿地图的直线。
-  const particles = (edges ?? []).flatMap((edge) =>
+  const particles = (edges ?? []).filter((edge) => !edge.drawing).flatMap((edge) =>
     (edge.directed ? [false] : [false, true]).map((reverse) => {
       const { offset, duration } = flowTiming(edge.id, reverse);
       const progress = ((Math.max(0, elapsedSeconds) + offset) % duration) / duration;

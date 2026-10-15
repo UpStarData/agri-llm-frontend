@@ -6,6 +6,7 @@ import { createRelationLayers as buildRelationLayers, prepareRelationPaths, crea
 import { createMapLayers, createInfluenceLayers } from '../src/utils/mapLayers'
 import { useDashboardStore } from '../src/store'
 import { dateRangeToUtc } from '../src/utils/date'
+import { getFactView, getRegionFactView } from '../src/utils/factView'
 import { FLAT_WORLD_BOUNDS, flattenWorldBoundaries, flattenWorldPosition, getFlatLongitudeLimits, getRegionView, getWheelZoomStep, getWorldZoom, isWorldOverviewZoom, MAP_ZOOM_STEP } from '../src/utils/map'
 import type { Boundaries, MapData } from '../src/types'
 
@@ -32,6 +33,27 @@ describe('业务数据与地图交互边界', () => {
     expect(useDashboardStore.getState().detailsOpen).toBe(false)
     useDashboardStore.getState().setFactRegion('')
     expect(useDashboardStore.getState()).toMatchObject({ level: 'world', regionId: undefined })
+  })
+  it('地图取景切换只改地图，右侧卡片的区域筛选保持不变', () => {
+    const store = useDashboardStore.getState()
+    store.setRegion('country', 'CN')
+    expect(useDashboardStore.getState()).toMatchObject({ level: 'country', regionId: 'CN' })
+    expect(useDashboardStore.getState().factFilters).toMatchObject({ countryId: '', provinceId: '' })
+    // 星点视角取自地图取景，卡片视角取自筛选条件，两者互不影响。
+    expect(getRegionFactView('country', 'CN')).toBe('china')
+    const { countryId, provinceId } = useDashboardStore.getState().factFilters
+    expect(getFactView(countryId, provinceId)).toBe('global')
+    useDashboardStore.getState().setRegion('province', '430000')
+    expect(useDashboardStore.getState().factFilters).toMatchObject({ countryId: '', provinceId: '' })
+  })
+  it.each([
+    ['world', undefined, 'global'],
+    ['country', 'CN', 'china'],
+    ['country', 'CL', 'global'],
+    ['province', '430000', 'hunan'],
+    ['province', '440000', 'china'],
+  ] as const)('地图层级 %s/%s 的星点视角为 %s', (level, regionId, view) => {
+    expect(getRegionFactView(level, regionId)).toBe(view)
   })
   it('视频按钮状态默认关闭，切换后只启用视频筛选', () => {
     const store = useDashboardStore.getState()
@@ -94,7 +116,7 @@ describe('业务数据与地图交互边界', () => {
     expect(layers.find((layer) => layer.id === 'overlay-ports')?.props.data).toBe(data.overlays?.ports)
     expect(layers.find((layer) => layer.id === 'overlay-fact-sources')?.props.data).toBe(data.overlays?.factSources)
     const rings = createInfluenceLayers([], 0.5, false)
-    expect(rings).toHaveLength(7)
+    expect(rings).toHaveLength(3)
     expect(rings[0].props.pickable).toBe(false)
     expect(rings[0].props.data).toEqual([])
   })

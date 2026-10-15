@@ -235,6 +235,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
           : state.modeStates,
       };
     }),
+  // 左侧「区域筛选」：既换卡片筛选条件，也把地图取景切到该区域，并清掉过期详情。
   setFactRegion: (countryId, provinceId = "") =>
     set((state) => ({
       factFilters: { ...state.factFilters, countryId, provinceId },
@@ -265,6 +266,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
             mode,
           },
     ),
+  // 地图点击/缩放的取景切换：只改地图，不动卡片筛选条件。
   setRegion: (level, regionId) =>
     set({
       level,

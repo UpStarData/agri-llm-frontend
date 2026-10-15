@@ -1,19 +1,25 @@
 {
-  "version": "prototype-v0.8.1",
-  "source": "agri-llm-demo/data",
+  "version": "prototype-v0.9.0",
+  "source": "world.geojson 为 Natural Earth 1:50m admin_0_countries（公有领域）；china.geojson 为高德 DataV 省级边界",
   "status": "preview-only",
   "coordinateNote": "按经度/纬度读取；原型坐标基准、许可和边界完整性需在正式上线前核实。",
-  "regionLevel": "中国文件只含省级边界；省区视角为聚焦省级面，不含市县边界。",
+  "regionLevel": "世界文件含国家/地区面；中国文件只含省级边界，省区视角为聚焦省级面，不含市县边界。",
+  "complianceNote": "Natural Earth 的中国轮廓不含九段线与南海诸岛，台、藏南等画法与国内标准地图不一致；世界层中国轮廓需在正式上线前按标准地图替换，并解决审图号。",
   "files": [
-    {
-      "path": "world.geojson",
-      "features": 177,
-      "sourceSha256": "f1d0ad43857933f5474ca6bf811a778bb1a7b736ebf4c960e439dbba4c70bf97"
-    },
     {
       "path": "china.geojson",
       "features": 35,
-      "sourceSha256": "02e474def2725db05247568511329ae67feb2cb53f72176e2180aa6565b53ffa"
+      "vertices": 25240,
+      "source": "agri-llm-demo/data/china.geo.json（高德 DataV 省级边界）",
+      "sha256": "41e8f73d3b2a49b62ee2d09223919e16c4a714dc5991c2ae0cc7a17f836697bc"
+    },
+    {
+      "path": "world.geojson",
+      "features": 242,
+      "vertices": 99613,
+      "source": "https://fastly.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson",
+      "sha256": "c338c51c61af912e6b8b2883ded285f7b4ea0a41388171ceb424d5ef4a38f6cb",
+      "license": "Natural Earth, public domain"
     }
   ]
 }

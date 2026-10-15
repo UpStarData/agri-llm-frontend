@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getGlobeZoomLimits, getRegionView } from "../src/utils/map";
 
 const effects = vi.hoisted(() => [] as (() => unknown)[]);
+const listeners = vi.hoisted(() => new Map<string, () => void>());
 
 // 隔离浏览器事件，验证层级切换、滚轮缓冲及动画帧。
 vi.mock("react", () => ({
@@ -28,6 +29,12 @@ const countryView = getRegionView("country", "CN", undefined, options.width, opt
 beforeEach(() => {
   vi.clearAllMocks();
   effects.length = 0;
+  listeners.clear();
+  // 自转的前置条件挂在 window 的指针事件上。
+  vi.stubGlobal("window", {
+    addEventListener: (type: string, handler: () => void) => listeners.set(type, handler),
+    removeEventListener: (type: string) => listeners.delete(type),
+  });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -100,6 +107,41 @@ describe("球体自转", () => {
     expect(camera.cameraRef.current).toBeUndefined();
     now += 1;
     frame!(48);
+    expect(camera.cameraRef.current!.longitude).toBeGreaterThan(camera.target.longitude);
+  });
+
+  it("松手通知丢失时只要指针已抬起就恢复自转", () => {
+    let frame: FrameRequestCallback;
+    let now = 10_000;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const camera = useMapCamera({ ...options, level: "world", isGlobe: true });
+    effects.forEach((effect) => effect());
+    listeners.get("pointerdown")!();
+    camera.onInteractionStateChange({ isDragging: true });
+    frame!(16);
+    expect(camera.cameraRef.current).toBeUndefined();
+    // 手势中途切换投影会重建 DeckGL，deck.gl 不会再发结束通知。
+    listeners.get("pointerup")!();
+    now += 1500;
+    frame!(32);
+    expect(camera.cameraRef.current!.longitude).toBeGreaterThan(camera.target.longitude);
+  });
+
+  it("按住指针不动也暂停自转，不靠 deck.gl 的通知", () => {
+    let frame: FrameRequestCallback;
+    let now = 10_000;
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frame = callback; return 1; });
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const camera = useMapCamera({ ...options, level: "world", isGlobe: true });
+    effects.forEach((effect) => effect());
+    listeners.get("pointerdown")!();
+    now += 5000;
+    frame!(16);
+    expect(camera.cameraRef.current).toBeUndefined();
+    listeners.get("pointerup")!();
+    now += 1500;
+    frame!(32);
     expect(camera.cameraRef.current!.longitude).toBeGreaterThan(camera.target.longitude);
   });
 });

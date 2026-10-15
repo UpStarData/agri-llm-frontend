@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getFactDetail,
   getFactPoints,
@@ -58,13 +58,24 @@ export function useFactList(
         })
       ).data,
     enabled: mode === "fact" && active,
+    // 新筛选结果到达前保留上一批卡片，列表不会先闪成加载态再重排。
+    placeholderData:
+      mode === "fact" && active ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
   const hasNextPage = Boolean(
     active && query.data && query.data.items.length < query.data.total,
   );
   const fetchNextPage = async () => {
-    if (!hasNextPage || query.isFetching || pageRef.current.loading || !active) return;
+    // 占位数据期间 items 仍属上一组筛选条件，翻页会拼错页号，等新结果落地再续传。
+    if (
+      !hasNextPage ||
+      query.isPlaceholderData ||
+      query.isFetching ||
+      pageRef.current.loading ||
+      !active
+    )
+      return;
     pageRef.current.loading = true;
     setPageLoading({ scope, loading: true });
     const nextPage = Math.ceil(query.data!.items.length / FACT_PAGE_SIZE) + 1;
@@ -99,9 +110,13 @@ export function useFactList(
       active && query.data
         ? {
             ...query.data,
-            items: query.data.items.filter((fact) =>
-              matchesFactFilters(fact, countryId, provinceId),
-            ),
+            // 占位数据仍属上一组区域条件，再按新区域裁剪会整列表清空；
+            // 原样保留，等新结果落地后由下面的过滤接手。
+            items: query.isPlaceholderData
+              ? query.data.items
+              : query.data.items.filter((fact) =>
+                  matchesFactFilters(fact, countryId, provinceId),
+                ),
           }
         : undefined,
     hasNextPage,
@@ -113,21 +128,27 @@ export function useFactList(
 
 export function useFactPoints(params: FactRequest, active = true) {
   const mode = useDashboardStore((s) => s.mode);
+  const enabled = mode === "fact" && active;
   return useQuery({
     queryKey: ["fact", "points", params],
     queryFn: async () => (await getFactPoints(params)).data.items,
-    enabled: mode === "fact" && active,
+    enabled,
+    // 筛选/搜索切换时保留上一批星点，地图只做增删而不是整层消失再重绘。
+    placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
 }
 
 export function useFactGeoPoints(params: GeoPointsRequest) {
   const mode = useDashboardStore((s) => s.mode);
+  const enabled = Boolean(params.kinds?.length) &&
+    (mode === "fact" || params.kinds?.includes("port"));
   return useQuery({
     queryKey: ["fact", "geo-points", params],
     queryFn: async () => (await getGeoPoints(params)).data.items,
-    enabled: Boolean(params.kinds?.length) &&
-      (mode === "fact" || params.kinds?.includes("port")),
+    enabled,
+    // 同上：切换区域或叠加类型时旧点位留在原位，等新结果到达再替换。
+    placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },
   });
 }

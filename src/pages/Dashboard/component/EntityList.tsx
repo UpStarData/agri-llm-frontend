@@ -57,6 +57,7 @@ const EntityList = ({ list, categories, scope, refresh }: IProps) => {
       title="本体卡片"
       autoScroll={{
         scope,
+        pending: list.isPlaceholderData,
         busy: list.isPending || list.isFetching,
         hasNextPage: !!list.hasNextPage,
         hasRecords: records.length > 0,

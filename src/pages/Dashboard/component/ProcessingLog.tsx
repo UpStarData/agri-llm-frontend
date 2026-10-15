@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Empty } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
+import { Button, Empty } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import { useProcessingLogs } from "@/hooks/useProcessingLogs";
@@ -11,6 +12,7 @@ const ProcessingLog = () => {
       open: s.drawerOpen[s.mode].bottom,
     })),
   );
+  const setDrawerOpen = useDashboardStore((s) => s.setDrawerOpen);
   const { logs } = useProcessingLogs(mode);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +28,7 @@ const ProcessingLog = () => {
       role="region"
       aria-label={mode === "fact" ? "事实处理日志" : "关联处理日志"}
     >
-      {open && <div className="processing-log-title">接入流</div>}
+      {open && <div className="processing-log-title"><span>接入流</span><Button type="text" icon={<CloseOutlined />} aria-label="关闭处理日志" onClick={() => setDrawerOpen(mode, "bottom", false)} /></div>}
       {open && (
         <div
           id="processing-log-content"

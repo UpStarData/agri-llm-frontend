@@ -7,6 +7,7 @@ import { getFactCount } from "@/api/fact";
 import type { FactTaxonomy, FactTaxonomyGroup, GeoPointKind } from "@/api/fact";
 import VarietySelect from "@/pages/Dashboard/component/VarietySelect";
 import FilterBar from "@/components/FilterBar";
+import { geoPointIcon } from "@/utils/geoPointIcons";
 
 const overlays: { label: string; kind: GeoPointKind }[] = [
   { label: "农作物主要产区", kind: "region" },
@@ -32,7 +33,7 @@ const FactMenu = ({
     isPending: taxonomyPending,
     isSuccess: taxonomySuccess,
   } = taxonomyQuery;
-  const { excluded, level, geoKinds, setGeoKinds, setExcluded } =
+  const { excluded, level, geoKinds, setGeoKinds, setExcluded, colorTheme } =
     useDashboardStore(
       useShallow((s) => ({
         excluded: s.excludedFilterIds.fact,
@@ -40,6 +41,7 @@ const FactMenu = ({
         geoKinds: s.factGeoKinds,
         setGeoKinds: s.setFactGeoKinds,
         setExcluded: s.setExcludedFilterIds,
+        colorTheme: s.colorTheme,
       })),
     );
   const changeCategory = (key: string) =>
@@ -85,7 +87,7 @@ const FactMenu = ({
               <span>当前事实</span>
             </div>
             <div className="overview-metric">
-              <span className="overview-count overview-count-new">{count?.todayAdded ?? "-"}</span>
+              <span className="overview-count">{count?.todayAdded ?? "-"}</span>
               <span>今日新增</span>
             </div>
           </div>
@@ -194,11 +196,20 @@ const FactMenu = ({
         <div className="overlay-options">
           {overlays.map(({ label, kind }) => {
             const unavailable =
-              (label === "地缘风险区" && level !== "world") ||
-              (label === "港口" && level === "province");
+              (kind === "risk" && level !== "world") ||
+              (kind === "port" && level === "province");
             return (
-              <div className="drawer-control-header" key={label}>
-                <span>{label}</span>
+              <div className="drawer-control-header" key={kind}>
+                <span className={`overlay-label${unavailable ? " is-off" : ""}`}>
+                  <img
+                    className="overlay-icon"
+                    src={geoPointIcon(kind, colorTheme).url}
+                    alt=""
+                    width={18}
+                    height={18}
+                  />
+                  {label}
+                </span>
                 <Checkbox
                   aria-label={label}
                   disabled={unavailable}

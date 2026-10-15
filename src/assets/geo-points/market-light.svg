@@ -1,0 +1,15 @@
+<!-- 农贸市场（亮色）/ 提篮 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- 白色描边层：先整组画一遍，再用主题色盖在上面，得到不依赖底图的白色轮廓。 -->
+  <g fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round">
+    <path d="M9.5 21a14.5 14.5 0 0 1 29 0h-5.5a9 9 0 0 0-18 0z"/>
+    <rect x="5" y="20.5" width="38" height="5.5" rx="2.75"/>
+    <path d="M6.5 24h35l-5.5 19h-24z"/>
+  </g>
+  <!-- 主题色填充层：子图形必须保持各自独立元素，同一 path 内的多条子路径会被 evenodd 挖空。 -->
+  <g fill="#F7A84D">
+    <path d="M9.5 21a14.5 14.5 0 0 1 29 0h-5.5a9 9 0 0 0-18 0z"/>
+    <rect x="5" y="20.5" width="38" height="5.5" rx="2.75"/>
+    <path d="M6.5 24h35l-5.5 19h-24z"/>
+  </g>
+</svg>

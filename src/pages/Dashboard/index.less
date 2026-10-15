@@ -89,9 +89,11 @@
   overflow: hidden;
   --right-panel-width: clamp(300px, 27vw, 420px);
   --panel-bottom: 22px;
+  --drawer-bottom: 0;
   --log-height: clamp(100px, 15vh, 150px);
   &.log-panel-open {
     --panel-bottom: calc(var(--log-height) + 34px);
+    --drawer-bottom: var(--log-height);
   }
   &.log-panel-collapsed {
     --panel-bottom: 22px;
@@ -261,7 +263,7 @@
   background: rgba(10, 35, 39, 0.68);
   backdrop-filter: blur(16px);
   .right-panel-open & {
-    right: calc(36px + var(--right-panel-width));
+    right: calc(14px + var(--right-panel-width));
   }
   .map-canvas:fullscreen & {
     right: 22px;
@@ -284,8 +286,8 @@
     flex-wrap: wrap;
     max-width: calc(100% - 20px);
     .right-panel-open & {
-      right: calc(20px + var(--right-panel-width));
-      max-width: calc(100% - var(--right-panel-width) - 30px);
+      right: calc(10px + var(--right-panel-width));
+      max-width: calc(100% - var(--right-panel-width) - 20px);
     }
     .map-canvas:fullscreen & {
       right: 10px;
@@ -321,6 +323,7 @@
 }
 
 // 左右弹窗：基础、标题栏与内容区
+// 抽屉贴屏幕边缘：顶到底铺满，四角不留圆角，外侧描边去掉避免贴着屏幕边框多一条线。
 .layer-drawer {
   .floating-panel();
   position: absolute;
@@ -332,14 +335,17 @@
   -webkit-backdrop-filter: blur(4px) saturate(130%);
   backdrop-filter: blur(4px) saturate(130%);
   z-index: 4;
-  bottom: var(--panel-bottom);
+  top: 0;
+  bottom: var(--drawer-bottom);
+  border-radius: 0;
+  border-top: 0;
   &[hidden] {
     display: none;
   }
   &-left {
-    top: 10px;
-    left: 22px;
+    left: 0;
     width: 320px;
+    border-left: 0;
     .overview-count {
       .theme-light & {
         color: var(--eco-text);
@@ -352,22 +358,13 @@
       }
     }
     @media (max-width: 760px) {
-      left: 10px;
-      top: 10px;
       width: calc(50% - 16px);
     }
   }
   &-right {
-    top: 10px;
-    right: 22px;
+    right: 0;
     width: var(--right-panel-width);
-    @media (max-width: 1100px) {
-      top: 10px;
-    }
-    @media (max-width: 760px) {
-      right: 10px;
-      top: 10px;
-    }
+    border-right: 0;
   }
   &-header {
     flex: none;
@@ -700,6 +697,21 @@
   font-size: 12px;
 }
 
+// 叠加图层图例：与地图上的点位图标同源，便于对照。
+.overlay-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  &.is-off {
+    opacity: 0.4;
+  }
+}
+
+.overlay-icon {
+  flex: none;
+}
+
 // 右侧记录列表与卡片
 .layer-record-list {
   display: grid;
@@ -745,41 +757,12 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  --record-accent: #087fff;
+  --record-halo: rgba(8, 127, 255, 0.38);
   transition:
     background 0.18s,
     border-color 0.18s,
-    transform 0.18s,
     box-shadow 0.18s;
-  &:hover {
-    background: rgba(103, 213, 195, 0.14);
-    border-color: @accent;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-    transform: translateY(-2px);
-    .theme-light & {
-      background: var(--eco-selectedSurface);
-      border-color: var(--eco-selected);
-      box-shadow: var(--eco-shadow);
-    }
-    .theme-dark & {
-      background: rgba(8, 127, 255, 0.18);
-      border-color: #087fff;
-    }
-  }
-  &:focus-visible,
-  &.is-selected {
-    background: rgba(103, 213, 195, 0.14);
-    border-color: @accent;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-    .theme-light & {
-      background: var(--eco-selectedSurface);
-      border-color: var(--eco-selected);
-      box-shadow: var(--eco-shadow);
-    }
-    .theme-dark & {
-      background: rgba(8, 127, 255, 0.18);
-      border-color: #087fff;
-    }
-  }
   .record-description {
     font-size: 12px;
     line-height: 1.7;
@@ -791,10 +774,19 @@
     background: var(--eco-card);
     color: var(--eco-text);
     border-color: var(--eco-border);
+    --record-accent: var(--eco-selected);
+    --record-halo: rgba(127, 220, 176, 0.5);
   }
   .theme-dark & {
     border-color: rgba(86, 138, 194, 0.23);
     background: rgba(20, 50, 94, 0.46);
+  }
+  // 卡片只改变边框，保留标题、摘要与元信息的原有颜色。
+  &:hover,
+  &.is-selected,
+  &:focus-visible {
+    border-color: var(--interaction-accent);
+    box-shadow: none;
   }
 }
 
@@ -843,6 +835,10 @@
     height: var(--log-height);
   }
   &-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    .ant-btn { color: inherit; }
     flex: none;
     padding: 8px 16px;
     font-weight: 600;
@@ -961,10 +957,11 @@
   --detail-card: rgba(15, 39, 75, 0.56);
   position: absolute;
   z-index: 6;
-  top: 18px;
-  bottom: var(--panel-bottom);
-  right: calc(36px + var(--right-panel-width));
-  width: min(600px, calc(100% - var(--right-panel-width) - 58px));
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: min(600px, 100%);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -976,7 +973,8 @@
     overflow: auto;
     padding: 0 16px 20px;
     min-height: 0;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
   }
   .layer-drawer-header {
     justify-content: space-between;
@@ -1137,12 +1135,12 @@
     box-shadow: var(--eco-shadow);
   }
   @media (max-width: 1100px) {
-    top: 18px;
+    top: 0;
   }
   @media (max-width: 760px) {
-    top: 18px;
-    right: 10px;
-    width: calc(100% - 20px);
+    top: 0;
+    right: 0;
+    width: 100%;
   }
   .theme-light .mode-relation & {
     background: var(--eco-panelGlass);
@@ -1154,14 +1152,18 @@
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
   }
+  .dashboard-stage.right-panel-open & {
+    right: var(--right-panel-width);
+    width: min(600px, calc(100% - var(--right-panel-width)));
+  }
   .dashboard-stage:not(.right-panel-open) & {
-    right: 18px;
-    width: min(600px, calc(100% - 36px));
+    right: 0;
+    width: min(600px, 100%);
   }
   @media (max-width: 760px) {
     .dashboard-stage:not(.right-panel-open) & {
-      right: 10px;
-      width: min(600px, calc(100% - 20px));
+      right: 0;
+      width: min(600px, 100%);
     }
   }
 }
@@ -1198,16 +1200,15 @@
   transform-origin: calc(100% + 28px) center;
   transform: scaleX(0.05) translateX(28px);
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
+  // 收起态不用 visibility 隐藏：它一旦参与过渡，刚打开的一小段时间里输入框还不可聚焦，
+  // 自动聚焦会落空。交互由 inert / aria-hidden 屏蔽，视觉由 opacity 承担。
   transition:
     transform 240ms ease,
-    opacity 180ms ease,
-    visibility 240ms;
+    opacity 180ms ease;
   &.is-open {
     transform: scaleX(1) translateX(0);
     opacity: 1;
-    visibility: visible;
     pointer-events: auto;
   }
   .theme-light & {
@@ -1237,7 +1238,7 @@
 .map-scale {
   position: absolute;
   left: 22px;
-  bottom: var(--panel-bottom);
+  bottom: 0;
   z-index: 3;
   padding: 7px 10px;
   border-radius: 4px;
@@ -1268,9 +1269,9 @@
 .relation-context-bar {
   .floating-panel();
   position: absolute;
-  top: 18px;
-  left: 356px;
-  right: calc(var(--right-panel-width) + 36px);
+  top: 0;
+  left: 334px;
+  right: calc(var(--right-panel-width) + 14px);
   z-index: 4;
   padding: 6px 12px;
   background: rgba(10, 35, 39, 0.72);
@@ -1284,13 +1285,13 @@
     border-color: var(--eco-border);
   }
   @media (max-width: 1100px) {
-    left: 356px;
+    left: 334px;
     right: 22px;
-    max-width: calc(100% - 378px);
+    max-width: calc(100% - 356px);
   }
   @media (max-width: 760px) {
     left: 10px;
-    right: 10px;
+    right: 0;
     max-width: none;
     top: 4px;
   }
@@ -1367,17 +1368,19 @@
 }
 
 
-// 事实层三行独立浮层，共用右边缘。
-.map-controls.map-controls-fact {
+// 关联层四列两行，事实层三列，时间筛选单独占一行。
+.map-controls.map-controls-fact,
+.map-controls.map-controls-relation {
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   .fact-controls-row,
+  .map-controls-row,
   .fact-controls-time {
     display: flex;
     align-items: center;
@@ -1386,9 +1389,8 @@
     padding: 5px;
     max-width: 100%;
     border: 1px solid rgba(86, 138, 194, 0.28);
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(10, 27, 57, 0.84);
-    box-shadow: 0 4px 18px rgba(1, 8, 27, 0.16);
     backdrop-filter: blur(16px);
     .theme-light & {
       background: var(--eco-panel);
@@ -1396,42 +1398,69 @@
       box-shadow: var(--eco-shadow);
     }
   }
+  .fact-controls-row, .map-controls-row { flex-wrap: wrap; }
   .fact-controls-time .ant-segmented-group { flex-wrap: wrap; }
-  .map-search-panel { right: -77px; left: auto; }
+  .map-search-panel { right: 0; left: auto; max-width: calc(100vw - 32px); }
 }
 
-// 面板开关与地图快捷键统一使用柔和的青灰色选中态。
+.map-controls.map-controls-fact .fact-controls-row {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  justify-content: end;
+}
+
+.dashboard {
+  --interaction-accent: #087fff;
+  &.theme-light { --interaction-accent: var(--eco-hub); }
+}
+.detail-header-actions { display: flex; gap: 4px; }
+
+.filter-chip.ant-btn:not(:disabled):hover,
+.filter-chip.ant-btn:not(:disabled):focus-visible {
+  color: inherit;
+  border-color: var(--interaction-accent);
+}
 .header-panel-controls,
+.dashboard-mode-switch,
 .map-controls {
-  --control-selected-bg: #24474f;
-  --control-selected-hover: #305b64;
-  --control-selected-text: #c1e6e5;
-  .theme-light & {
-    --control-selected-bg: #e1efed;
-    --control-selected-hover: #d0e5e2;
-    --control-selected-text: #2c6764;
+  .ant-btn {
+    color: inherit;
+    transition: border-color 0.18s;
   }
+  .ant-btn:not(:disabled):hover,
+  .ant-btn:not(:disabled):active,
+  .ant-btn:not(:disabled):focus-visible,
   .ant-btn.ant-btn-primary,
   .ant-btn[aria-pressed="true"],
   .ant-btn[aria-expanded="true"] {
-    color: var(--control-selected-text);
-    background: var(--control-selected-bg);
-    border-color: transparent;
-    box-shadow: none;
-    &:not(:disabled):hover,
-    &:not(:disabled):active {
-      color: var(--control-selected-text);
-      background: var(--control-selected-hover);
-      border-color: transparent;
-    }
-  }
-  .fact-time-segmented {
+    color: inherit;
     background: transparent;
-    .ant-segmented-item-selected,
-    .ant-segmented-thumb {
-      color: var(--control-selected-text);
-      background: var(--control-selected-bg);
-      box-shadow: none;
-    }
+    border-color: var(--interaction-accent);
+    box-shadow: none;
   }
+  .ant-segmented-item { border: 1px solid transparent; }
+  .ant-segmented-item:hover,
+  .ant-segmented-item-selected {
+    color: inherit;
+    background: transparent;
+    border-color: var(--interaction-accent);
+    box-shadow: none;
+  }
+  .ant-segmented-thumb { background: transparent; box-shadow: none; }
+}
+
+.fact-live-notice {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex: 0 0 100%;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border: 1px solid var(--ant-color-primary-border, #d5ad52);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container, #263528);
+  color: var(--ant-color-text, #f5da91);
 }

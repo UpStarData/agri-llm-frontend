@@ -18,7 +18,7 @@ vi.mock("../src/api/request", () => ({ request: vi.fn() }));
 describe("事实层接口参数", () => {
   beforeEach(() => vi.mocked(request).mockClear());
 
-  it("区域视角在事实列表和地图星点请求中使用相同的 view", async () => {
+  it("区域视角在事实列表和地图星点接口中都按 view 透传", async () => {
     for (const [countryId, provinceId, view] of [
       ["", "", "global"],
       ["CN", "", "china"],

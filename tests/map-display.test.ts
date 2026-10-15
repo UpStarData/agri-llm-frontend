@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
-import { mergeChinaBoundaries } from "../src/utils/map";
-import type { Boundaries } from "../src/types";
+import { ScatterplotLayer } from "@deck.gl/layers";
+import { mergeChinaBoundaries, getMapPointScale } from "../src/utils/map";
+import { applyFactPointLayout, createMapLayers, FACT_POINT_RADIUS } from "../src/utils/mapLayers";
+import type { Boundaries, MapLevel } from "../src/types";
 import { describe, expect, it } from "vitest";
 import { layoutFactPoints } from "../src/utils/factPointLayout";
 import { createGlobeSurface } from "../src/utils/globeSurface";
@@ -41,6 +43,37 @@ describe("事实点位展开与球面遮挡", () => {
     expect(Math.max(...positions.map((p) => p[0]))).toBe(180);
     expect(Math.min(...positions.map((p) => p[1]))).toBe(-90);
     expect(Math.max(...positions.map((p) => p[1]))).toBe(90);
+  });
+  it("重叠展开只改位置：同一区域层级的事实点半径一致，大小只随层级缩放", () => {
+    const points: FactPoint[] = [
+      { factId: "a", geoPoint: [112, 28] },
+      { factId: "b", geoPoint: [112, 28] },
+      { factId: "c", geoPoint: [120, 30] },
+    ];
+    const factLayer = (layers: ReturnType<typeof createMapLayers>) =>
+      layers.find((item) => item.id === "real-facts") as ScatterplotLayer<FactPoint>;
+    const base = (level: MapLevel) => createMapLayers({
+      mode: "fact", colorTheme: "dark", level, points,
+      select: () => {}, selectProvince: () => {},
+    });
+    // 展开只发生在同坐标的 a、b 上，c 保持原位。
+    const layout = layoutFactPoints(points, (p) => p, (p) => p);
+    expect(layout.size).toBe(2);
+    for (const level of ["world", "country", "province"] as const) {
+      const layers = base(level);
+      const spread = factLayer(applyFactPointLayout(layers, layout, getMapPointScale(level), false));
+      // 半径是常量，不因点位、是否被展开而分档。
+      expect(spread.props.getRadius).toBe(FACT_POINT_RADIUS);
+      expect(spread.props.getRadius).toBe(factLayer(layers).props.getRadius);
+      expect(spread.props.radiusScale).toBe(getMapPointScale(level));
+      const [a, b] = points;
+      expect(spread.props.getPosition(b)).toEqual(layout.get(b));
+      expect(spread.props.getPosition(a)).toEqual(layout.get(a));
+      expect(factLayer(layers).props.getPosition(b)).toEqual([112, 28]);
+    }
+    // 层级之间的大小差异仍由 radiusScale 承担。
+    expect(new Set(["world", "country", "province"].map((level) => getMapPointScale(level))).size)
+      .toBeGreaterThan(1);
   });
 });
 
