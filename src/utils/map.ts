@@ -25,26 +25,36 @@ export const FLAT_WORLD_PADDING = 32;
 // Shift the repeating 2D world window so China sits near the center.
 export const FLAT_WORLD_BOUNDS: [Position, Position] = [[-75, -57], [285, 84]];
 
-// ECharts' unprojected world map uses latitude linearly. Feed a matching
-// latitude into Web Mercator so deck.gl's existing pan/zoom controls still work.
-export function flattenWorldPosition([longitude, latitude]: Position): Position {
-  return [longitude, Math.atan(Math.sinh(latitude * Math.PI / 180)) * 180 / Math.PI];
+/** 2D 与 3D 共用原始经纬度，交给视图投影，避免额外压缩纬度。 */
+export function flattenWorldPosition(position: Position): Position {
+  return position;
 }
 
 export function flattenWorldBoundaries(boundaries: Boundaries): Boundaries {
   return {
     ...boundaries,
-    features: boundaries.features.filter((feature) => feature.properties.name !== "Antarctica").map((feature) => ({
-      ...feature,
-      geometry: feature.geometry.type === "Polygon"
-        ? { ...feature.geometry, coordinates: feature.geometry.coordinates.map((ring) => ring.map((point) => flattenWorldPosition(point as Position))) }
-        : { ...feature.geometry, coordinates: feature.geometry.coordinates.map((polygon) => polygon.map((ring) => ring.map((point) => flattenWorldPosition(point as Position)))) },
-    })),
+    features: boundaries.features.filter((feature) => feature.properties.name !== "Antarctica"),
+  };
+}
+
+/** 同一个多面要素才能在悬停、选择和着色时统一处理中国各区域。 */
+export function mergeChinaBoundaries(boundaries: Boundaries): Boundaries {
+  const regionIds = new Set(["CN", "TW", "HK", "MO"]);
+  const china = boundaries.features.find((feature) => feature.properties.regionId === "CN");
+  if (!china) return boundaries;
+  const coordinates = boundaries.features
+    .filter((feature) => regionIds.has(feature.properties.regionId))
+    .flatMap((feature) => feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates] : feature.geometry.coordinates);
+  return {
+    ...boundaries,
+    features: boundaries.features.filter((feature) => !regionIds.has(feature.properties.regionId))
+      .concat({ ...china, geometry: { type: "MultiPolygon", coordinates } }),
   };
 }
 
 function getWorldFit(width: number, height: number) {
-  return new WebMercatorViewport({ width: Math.max(width, 1), height: Math.max(height, 1) })
+  return new WebMercatorViewport({ width: Math.max(Number.isFinite(width) ? width : 0, 320), height: Math.max(Number.isFinite(height) ? height : 0, 300) })
     .fitBounds([flattenWorldPosition(FLAT_WORLD_BOUNDS[0]), flattenWorldPosition(FLAT_WORLD_BOUNDS[1])], { padding: FLAT_WORLD_PADDING });
 }
 
@@ -65,22 +75,11 @@ export function getFlatLongitudeLimits(width: number, zoom: number) {
   return { min: -limit, max: limit };
 }
 
-/** 以初始视角为中线限制平移，避免循环世界地图被无限拖走。 */
-export function clampFlatView(
-  view: MapViewState,
-  center: MapViewState,
-  width: number,
-  height: number,
-): MapViewState {
-  const viewport = new WebMercatorViewport({ ...center, width, height });
-  const west = viewport.unproject([width * 0.25, height / 2])[0];
-  const south = viewport.unproject([width / 2, height * 0.75])[1];
-  const north = viewport.unproject([width / 2, height * 0.25])[1];
-  const longitudeRange = Math.min(90, Math.abs(center.longitude - west));
+/** 循环世界允许连续横向平移，仅限制极区和倾斜。 */
+export function clampFlatView(view: MapViewState): MapViewState {
   return {
     ...view,
-    longitude: Math.max(center.longitude - longitudeRange, Math.min(center.longitude + longitudeRange, view.longitude)),
-    latitude: Math.max(south, Math.min(north, view.latitude)),
+    latitude: Math.max(-85, Math.min(85, view.latitude)),
     pitch: 0,
     bearing: 0,
   };
@@ -97,6 +96,8 @@ export function getGlobeFitZoom(
   latitude = 0,
   ratio = GLOBE_INITIAL_RATIO,
 ): number {
+  width = Math.max(Number.isFinite(width) ? width : 0, 1);
+  height = Math.max(Number.isFinite(height) ? height : 0, 1);
   const diameter = Math.min(width, height) * ratio;
   const perspective = Math.hypot(1, diameter / (2 * height * GLOBE_ALTITUDE));
   const latitudeScale = Math.cos((Math.min(85, Math.max(-85, latitude)) * Math.PI) / 180);
@@ -127,7 +128,7 @@ export function getRegionView(
       zoom: view.zoom, minZoom: view.zoom };
   }
   let bounds: [Position, Position] = [
-    [73, 18],
+    [73, 3],
     [135, 54],
   ];
   if (level === "province" || (level === "country" && regionId && regionId !== "CN")) {
@@ -153,8 +154,8 @@ export function getRegionView(
     ];
   }
   const view = new WebMercatorViewport({
-    width: Math.max(width, 320),
-    height: Math.max(height, 300),
+    width: Math.max(Number.isFinite(width) ? width : 0, 320),
+    height: Math.max(Number.isFinite(height) ? height : 0, 300),
   }).fitBounds(bounds, { padding: 70 });
   return {
     ...WORLD_VIEW,
@@ -163,4 +164,9 @@ export function getRegionView(
     zoom: view.zoom,
     minZoom: getWorldZoom(width, height),
   };
+}
+
+/** 区域越聚焦，事实和本体标记越大；球体仍采用全球尺寸。 */
+export function getMapPointScale(level: string, isGlobe = false): number {
+  return isGlobe || level === "world" ? 0.7 : level === "province" ? 1.35 : 1;
 }

@@ -1,4 +1,4 @@
-import { Button, Checkbox, Collapse, Empty, Spin, Switch } from "antd";
+import { Button, Checkbox, Collapse, Empty, Spin } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -93,7 +93,7 @@ const FactMenu = ({
       </div>
       <div className="menu-section">
         <div className="drawer-filter-header">
-          <div className="menu-section-title">图层数据分类筛选</div>
+          <div className="menu-section-title">事实分类筛选</div>
           <div className="drawer-filter-actions">
             <Button
               type="link"
@@ -199,14 +199,13 @@ const FactMenu = ({
             return (
               <div className="drawer-control-header" key={label}>
                 <span>{label}</span>
-                <Switch
-                  size="small"
+                <Checkbox
                   aria-label={label}
                   disabled={unavailable}
                   checked={!unavailable && geoKinds.includes(kind)}
-                  onChange={(checked) =>
+                  onChange={(event) =>
                     setGeoKinds(
-                      checked
+                      event.target.checked
                         ? [...geoKinds, kind]
                         : geoKinds.filter((value) => value !== kind),
                     )

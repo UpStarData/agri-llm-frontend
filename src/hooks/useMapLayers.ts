@@ -11,7 +11,7 @@ import { useDashboardStore } from "@/store";
 import type { Boundaries, MapData } from "@/types";
 import type { FactPoint, GeoPoint, GeoPointKind } from "@/api/fact";
 import type { RelationTypeCatalog } from "@/api/relation";
-import { flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
+import { getMapPointScale, flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
 import { layoutFactPoints } from "@/utils/factPointLayout";
 import { createGlobeSurface } from "@/utils/globeSurface";
 import { createMapLayers, createInfluenceLayers } from "@/utils/mapLayers";
@@ -87,6 +87,7 @@ export function useMapLayers({
       selection: s.selection,
     })),
   );
+  const pointScale = getMapPointScale(level, isGlobe);
   const [animationSeconds, setAnimationSeconds] = useState(0);
   const influencePhase = (animationSeconds / 2.4) % 1;
   const flatWorldBoundaries = useMemo(
@@ -161,14 +162,15 @@ export function useMapLayers({
         colorTheme,
         data,
         overlayVisibility: mapOverlayVisibility,
-        select,
+        select: isGlobe ? () => { setIsGlobe(false); changeRegion(""); } : select,
         selectCountry: (id) => {
           setIsGlobe(false);
-          changeRegion(id);
+          changeRegion(isGlobe ? "" : id);
         },
         selectProvince: (id) => {
           setIsGlobe(false);
-          changeRegion("CN", id);
+          if (isGlobe) changeRegion("");
+          else changeRegion("CN", id);
         },
       }),
     // DeckGL 按投影重新挂载，必须创建尚未被旧实例销毁的图层。
@@ -211,16 +213,18 @@ export function useMapLayers({
         return Math.sin(latitude) * Math.sin(center) +
           Math.cos(latitude) * Math.cos(center) * Math.cos((lng - camera.longitude) * radians) > 0.15;
       },
+      pointScale,
     );
     return baseLayers.map((layer) => layer.id === "real-facts"
       ? (layer as ScatterplotLayer<FactPoint>).clone({
           getPosition: (point: FactPoint) => positions.get(point) ??
             (flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint),
+          radiusScale: pointScale,
           getRadius: (point: FactPoint) => positions.has(point) ? 3 : 5,
           updateTriggers: { ...layer.props.updateTriggers, getPosition: [positions], getRadius: [positions] },
         })
       : layer);
-  }, [mode, points, viewport, flatWorld, baseLayers, isGlobe, camera.latitude, camera.longitude]);
+  }, [mode, points, viewport, flatWorld, baseLayers, isGlobe, camera.latitude, camera.longitude, pointScale]);
 
   const relationPaths = useMemo(
     () =>
@@ -238,6 +242,7 @@ export function useMapLayers({
     () =>
       mode === "relation"
         ? createRelationLayers({
+            pointScale,
             entities: data?.entities ?? [],
             relations: data?.relations ?? [],
             paths: relationPaths,
@@ -252,7 +257,7 @@ export function useMapLayers({
             width,
             height,
             project: relationViewport ? (position) => relationViewport.project(position) : undefined,
-            select,
+            select: isGlobe ? () => { setIsGlobe(false); changeRegion(""); } : select,
             relationTypes,
             colorTheme,
           })
@@ -261,6 +266,7 @@ export function useMapLayers({
       mode,
       data,
       relationPaths,
+      pointScale,
       flatWorld,
       isGlobe,
       highlightedEntityId,
@@ -272,6 +278,8 @@ export function useMapLayers({
       select,
       relationTypes,
       colorTheme,
+      setIsGlobe,
+      changeRegion,
     ],
   );
   const flowLayer = useMemo(
@@ -295,6 +303,7 @@ export function useMapLayers({
         getPosition: (point) =>
           flatWorld ? flattenWorldPosition(point.geoPoint) : point.geoPoint,
         getRadius: 7,
+        radiusScale: pointScale,
         radiusUnits: "pixels",
         getFillColor: (point) => colorTheme === "light" ? rgba(geoThemeColor(point.kind), 235) : geoColors[point.kind],
         stroked: colorTheme === "light",
@@ -305,7 +314,7 @@ export function useMapLayers({
       }),
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe, colorTheme],
+    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe, colorTheme, pointScale],
   );
   const influenceLayers = useMemo(
     () =>

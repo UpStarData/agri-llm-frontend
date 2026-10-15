@@ -400,7 +400,8 @@ describe("地图路径缓存", () => {
       ),
     ).toBe(false);
     const newPaths = prepareRelationPaths(nodes, edges, false, true);
-    expect(newPaths.get("cl-hx")).not.toEqual(paths.get("cl-hx"));
+    // 世界与区域视角共用原始经纬度，不再压缩路径。
+    expect(newPaths.get("cl-hx")).toEqual(paths.get("cl-hx"));
   });
   it("两层日志默认收起，收起列表不关闭当前详情", () => {
     useDashboardStore.setState(useDashboardStore.getInitialState(), true);

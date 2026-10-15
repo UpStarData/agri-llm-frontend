@@ -8,7 +8,7 @@ import {
 import type { Layer } from "@deck.gl/core";
 import type { FactPoint } from "../api/fact";
 import { impactCircle } from "./impact";
-import { flattenWorldPosition } from "./map";
+import { flattenWorldPosition, getMapPointScale } from "./map";
 import type {
   Boundaries,
   ColorTheme,
@@ -165,16 +165,9 @@ export function createMapLayers({
       pickable: true,
       getPosition: (d) => position(d.geoPoint),
       getRadius: 5,
+      radiusScale: getMapPointScale(level),
       radiusUnits: "pixels",
-      getFillColor: (point) => {
-        // 只有接口明确返回热度的事实点参与灰度渐变，0 必须保留。
-        const intensity = point.intensity;
-        const heat = typeof intensity === "number" && Number.isFinite(intensity)
-          ? Math.max(0, Math.min(100, intensity)) / 100
-          : 1;
-        const gray = colorTheme === "light" ? 148 : 150;
-        return colors.fact.map((channel) => Math.round(gray + (channel - gray) * heat)) as [number, number, number];
-      },
+      getFillColor: [255, 255, 255],
       stroked: colorTheme === "light",
       getLineColor: rgba(eco.selected, 140),
       getLineWidth: (point) => point.factId === selectedFactId ? 4 : 0,
@@ -209,7 +202,7 @@ export function createMapLayers({
             getPosition: (d) => position(d.position),
             getText: (d) => d.name,
             characterSet: "auto",
-            fontFamily: "PingFang SC, Microsoft YaHei, sans-serif",
+            fontFamily: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
             getSize: 12,
             sizeUnits: "pixels",
             getPixelOffset: [0, 17],
@@ -240,7 +233,7 @@ export function createMapLayers({
             getPosition: (d) => position(d.position),
             getText: (d) => d.name,
             characterSet: "auto",
-            fontFamily: "PingFang SC, Microsoft YaHei, sans-serif",
+            fontFamily: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
             getSize: 11,
             sizeUnits: "pixels",
             getPixelOffset: [0, 16],
@@ -264,25 +257,28 @@ export function createInfluenceLayers(
     (point) =>
       Number.isFinite(point.impactRadiusKm) && point.impactRadiusKm! > 0,
   );
-  return [0, 1, 2, 3].map((index) => {
+  const color = colorTheme === "light" ? rgb(eco.priorityRoute) : [255, 157, 86] as [number, number, number];
+  return [0, 1, 2, 3].flatMap((index) => {
     const progress = index === 3 ? 1 : (phase + index / 3) % 1;
-    return new PathLayer<FactPoint>({
-      id: `overlay-influence-ring-${index}`,
+    // 波前由中心向外扩散，出生与消失时都透明，循环时不会突然闪跳。
+    const opacity = index === 3 ? 35 : Math.round(Math.sin(Math.PI * progress) ** 1.4 * 210);
+    const path = (point: FactPoint) =>
+      impactCircle(point.geoPoint, point.impactRadiusKm! * progress).map(
+        (position) => flatWorld ? flattenWorldPosition(position) : position,
+      );
+    return (index === 3 ? [false] : [true, false]).map((glow) => new PathLayer<FactPoint>({
+      id: `overlay-influence-${glow ? "glow" : "ring"}-${index}`,
       data: influence,
       pickable: false,
-      getPath: (point) =>
-        impactCircle(point.geoPoint, point.impactRadiusKm! * progress).map(
-          (position) => (flatWorld ? flattenWorldPosition(position) : position),
-        ),
+      getPath: path,
       wrapLongitude: true,
       widthUnits: "pixels",
-      getWidth: index === 3 ? 1 : 2,
-      getColor: [
-        ...(colorTheme === "light" ? rgb(eco.priorityRoute) : [255, 157, 86] as [number, number, number]),
-        index === 3 ? 95 : Math.round((1 - progress) * 190),
-      ],
-      parameters: { cullMode: "none" },
+      getWidth: index === 3 ? 1 : (glow ? 9 : 2.5) * (1 - progress * 0.5),
+      getColor: [...color, glow ? Math.round(opacity * 0.18) : opacity],
+      capRounded: true,
+      jointRounded: true,
+      parameters: { cullMode: "none", depthWriteEnabled: false },
       updateTriggers: { getPath: [progress, flatWorld], getColor: [progress, colorTheme] },
-    });
+    }));
   });
 }

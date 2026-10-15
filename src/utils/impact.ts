@@ -22,11 +22,8 @@ export function impactCircle(center: Position, radiusKm: number): Position[] {
 }
 
 /** Local horizontal scale at the center of the flat map. */
-export function mapScale(zoom: number, latitude: number, flatWorld: boolean) {
-  const realLatitude = flatWorld
-    ? Math.asinh(Math.tan(latitude * Math.PI / 180)) * 180 / Math.PI
-    : latitude;
-  const kmPerPixel = 2 * Math.PI * EARTH_RADIUS_KM * Math.cos(realLatitude * Math.PI / 180) /
+export function mapScale(zoom: number, latitude: number, _flatWorld: boolean) {
+  const kmPerPixel = 2 * Math.PI * EARTH_RADIUS_KM * Math.cos(latitude * Math.PI / 180) /
     (512 * 2 ** zoom);
   const maximum = kmPerPixel * 100;
   const magnitude = 10 ** Math.floor(Math.log10(maximum));

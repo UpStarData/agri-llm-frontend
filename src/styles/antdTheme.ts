@@ -15,7 +15,7 @@ export const getAntdTheme = (colorTheme: ColorTheme): ThemeConfig => ({
     ...(colorTheme === "light" ? { colorSuccess: eco.production, colorWarning: eco.priorityRoute, colorError: eco.anomaly, colorInfo: eco.hub, colorBgLayout: eco.page, colorBgElevated: eco.panel, colorFillAlter: eco.card, colorBorderSecondary: eco.border, colorTextHeading: eco.text, colorLink: eco.hub, controlOutline: eco.selectedSurface } : {}),
     borderRadius: 7,
     fontSize: 13,
-    fontFamily: "'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
+    fontFamily: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
   },
   components: {
     Card: { headerFontSize: 13 },

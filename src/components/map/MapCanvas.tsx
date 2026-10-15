@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { DeckGL } from "@deck.gl/react";
 import {
@@ -67,8 +67,8 @@ const MapCanvas = ({
 }: IProps) => {
   const container = useRef<HTMLDivElement>(null);
   const size = useSize(container);
-  const width = size?.width ?? 1200;
-  const height = size?.height ?? 800;
+  const width = Math.max(size?.width ?? 1200, 1);
+  const height = Math.max(size?.height ?? 800, 1);
   const world = useBoundaries("world");
   const china = useBoundaries("china");
   const {
@@ -94,6 +94,7 @@ const MapCanvas = ({
       setHighlightedEntity: s.setHighlightedEntity,
     })),
   );
+  const [globeHovered, setGlobeHovered] = useState(false);
   const [gpuError, setGpuError] = useState<string>();
   const [globeModes, setGlobeModes] = useState({ fact: false, relation: true });
   const [relationView, setRelationView] = useState<"map" | "graph">("map");
@@ -121,7 +122,7 @@ const MapCanvas = ({
     [mode, setFactRegion, setRegion],
   );
   const flatWorld = level === "world" && !isGlobe;
-  const visibleGeoKinds = (
+  const visibleGeoKinds = useMemo(() => (
     mode === "relation"
       ? mapOverlayVisibility.ports
         ? ["port" as GeoPointKind]
@@ -131,7 +132,7 @@ const MapCanvas = ({
     (kind) =>
       !(kind === "risk" && level !== "world") &&
       !(kind === "port" && level === "province"),
-  );
+  ), [mode, mapOverlayVisibility.ports, factGeoKinds, level]);
   const geoRequest: GeoPointsRequest = {
     view:
       level === "world" || (level === "country" && regionId !== "CN")
@@ -144,6 +145,10 @@ const MapCanvas = ({
       : {}),
   };
   const geoPoints = useFactGeoPoints(geoRequest);
+  const visibleGeoPoints = useMemo(
+    () => geoPoints.data?.filter((point) => visibleGeoKinds.includes(point.kind)),
+    [geoPoints.data, visibleGeoKinds],
+  );
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -181,7 +186,7 @@ const MapCanvas = ({
     points,
     world: world.data,
     china: china.data,
-    geoPoints: geoPoints.data,
+    geoPoints: visibleGeoPoints,
     camera,
     width,
     height,
@@ -200,7 +205,7 @@ const MapCanvas = ({
   };
   return (
     <div
-      className={`map-canvas${isGlobe ? " map-canvas-globe" : ""}`}
+      className={`map-canvas${isGlobe ? " map-canvas-globe" : ""}${globeHovered ? " map-globe-hover" : ""}`}
       ref={container}
       aria-label="农业产业链地图"
     >
@@ -217,9 +222,6 @@ const MapCanvas = ({
           zoom={camera.zoom}
         />
       )}
-      {!isGlobe && !isGraph && (
-        <div className="map-center-line" aria-hidden="true"><span>中心线</span></div>
-      )}
       {!gpuError && (
         // 球面必须重新细分多边形，不能复用平面投影的网格与三角剖分。
         <DeckGL
@@ -228,10 +230,17 @@ const MapCanvas = ({
           style={{ zIndex: "2", display: isGraph ? "none" : undefined }}
           views={isGlobe ? globeView : repeatingFlatView}
           layers={layers}
+          onHover={({ object }) => setGlobeHovered(isGlobe && Boolean(object))}
+          getCursor={({ isDragging, isHovering }) => isDragging ? "grabbing" : isHovering ? "pointer" : "grab"}
           pickingRadius={mode === "relation" ? 3 : 0}
           viewState={camera}
           controller={isGlobe ? globeController : flatController}
           onClick={({ object }) => {
+            if (isGlobe) {
+              changeRegion("");
+              setIsGlobe(false);
+              return;
+            }
             if (mode === "relation" && !object) setHighlightedEntity(null);
           }}
           useDevicePixels={1}
@@ -303,10 +312,14 @@ const MapCanvas = ({
           if (view === "graph") setRelationView("graph");
           else {
             setRelationView("map");
+            if (isGlobe && view === "2d") changeRegion("");
             setIsGlobe(view === "3d");
           }
         }}
-        onToggleGlobe={() => setIsGlobe((value) => !value)}
+        onToggleGlobe={() => {
+          if (isGlobe) changeRegion("");
+          setIsGlobe((value) => !value);
+        }}
         onFullscreen={toggleFullscreen}
         onReset={() => (isGraph ? setGraphZoom(1) : setCamera(target))}
         onZoom={(direction) => {

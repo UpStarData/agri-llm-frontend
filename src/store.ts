@@ -65,6 +65,8 @@ interface DashboardState {
   excludedFilterIds: Record<Mode, string[]>;
   mapOverlayVisibility: Record<MapOverlayType, boolean>;
   factGeoKinds: GeoPointKind[];
+  mapControlsVisible: boolean;
+  setMapControlsVisible: (enabled: boolean) => void;
   factFilters: IFactFilters;
   setFactFilters: (filters: Partial<IFactFilters>) => void;
   setFactRegion: (countryId: string, provinceId?: string) => void;
@@ -188,6 +190,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   excludedFilterIds: { fact: [], relation: [] },
   mapOverlayVisibility: { ports: false, factSources: false, influence: false },
   factGeoKinds: [],
+  mapControlsVisible: true,
+  setMapControlsVisible: (mapControlsVisible) => set({ mapControlsVisible }),
   factFilters: {
     varieties: [],
     countryId: "",

@@ -18,7 +18,6 @@ import {
   GLOBE_MIN_ZOOM,
   GLOBE_WORLD_LATITUDE,
   clampFlatView,
-  flattenWorldPosition,
   isGlobeMaxZoom,
 } from "@/utils/map";
 interface IOptions {
@@ -51,6 +50,7 @@ export const useMapCamera = ({
 }: IOptions) => {
   const lastInteractionAt = useRef(0);
   const interacting = useRef(false);
+  const transitionUntil = useRef(0);
   const cameraRef = useRef<MapViewState | undefined>(undefined);
   const flatTarget = useMemo(
     () => getRegionView(level, regionId, china, width, height, world),
@@ -75,55 +75,59 @@ export const useMapCamera = ({
   const [interactions, setInteractions] = useState<
     Partial<Record<typeof mode, { targetKey: string; view: MapViewState }>>
   >({});
+  const projection = useRef(isGlobe);
   const interaction = interactions[mode];
   const camera =
     interaction?.targetKey === targetKey ? interaction.view : target;
   useLayoutEffect(() => {
     cameraRef.current = camera;
-  }, [camera, mode]);
+    if (projection.current !== isGlobe) {
+      projection.current = isGlobe;
+      setInteractions((previous) => ({ ...previous, [mode]: undefined }));
+    }
+  }, [camera, mode, isGlobe]);
 
   const setCamera = useCallback(
     (update: MapViewState | ((previous: MapViewState) => MapViewState)) => {
       const previous = cameraRef.current ?? target;
       const next = typeof update === "function" ? update(previous) : update;
-      const view = isGlobe ? next : clampFlatView(next, flatTarget, width, height);
+      const view = isGlobe ? next : clampFlatView(next);
       cameraRef.current = view;
       setInteractions((previous) => ({
         ...previous,
         [mode]: { targetKey, view },
       }));
     },
-    [target, mode, targetKey, isGlobe, flatTarget, width, height],
+    [target, mode, targetKey, isGlobe],
   );
 
   const setZoom = useCallback(
     (view: MapViewState) => {
+      if (Date.now() < transitionUntil.current) return;
       if (isGlobe && isGlobeMaxZoom(view, width, height)) {
-        const next = clampFlatView({
-          ...flatTarget,
-          longitude: view.longitude + Math.round((flatTarget.longitude - view.longitude) / 360) * 360,
-          latitude: level === "world"
-            ? flattenWorldPosition([view.longitude, view.latitude])[1]
-            : view.latitude,
-          zoom: flatTarget.zoom + 0.5,
-          transitionDuration: 0,
-        }, flatTarget, width, height);
-        setInteractions((previous) => ({
-          ...previous,
-          [mode]: { targetKey: `${level}:${regionId ?? ""}:${width}:${height}:false`, view: next },
-        }));
-        cameraRef.current = next;
+        transitionUntil.current = Date.now() + 700;
+        changeRegion("");
         setIsGlobe(false);
         return;
       }
-      if (!isGlobe && view.zoom <= getWorldZoom(width, height) + 0.001) {
-        setIsGlobe(true);
-        changeRegion("");
-        return;
+      if (!isGlobe) {
+        const worldZoom = getWorldZoom(width, height);
+        const countryZoom = getRegionView("country", "CN", china, width, height, world).zoom;
+        if (level === "province" && view.zoom <= countryZoom + 0.001) {
+          transitionUntil.current = Date.now() + 500;
+          changeRegion("CN");
+          return;
+        }
+        if (view.zoom <= worldZoom + 0.001) {
+          transitionUntil.current = Date.now() + 700;
+          if (level === "world") setIsGlobe(true);
+          else changeRegion("");
+          return;
+        }
       }
       setCamera(view);
     },
-    [height, isGlobe, setCamera, changeRegion, width, setIsGlobe, flatTarget, mode, level, regionId],
+    [height, isGlobe, setCamera, changeRegion, width, setIsGlobe, level, china, world],
   );
   useEffect(() => {
     const element = container.current;
@@ -176,7 +180,7 @@ export const useMapCamera = ({
     return () => element.removeEventListener("wheel", onWheel);
   }, [paused, height, isGlobe, setZoom, target, width, setIsGlobe, container]);
   useEffect(() => {
-    if (!isGlobe || level !== "world" || paused) return;
+    if (!isGlobe || paused) return;
     let frame = 0;
     let previousTime = 0;
     const rotate = (time: number) => {
@@ -188,26 +192,28 @@ export const useMapCamera = ({
       )
         setCamera((view) => ({
           ...view,
-          longitude: view.longitude + elapsed * 0.0007,
+          longitude: view.longitude + elapsed * 0.003,
           transitionDuration: 0,
         }));
       frame = requestAnimationFrame(rotate);
     };
     frame = requestAnimationFrame(rotate);
     return () => cancelAnimationFrame(frame);
-  }, [isGlobe, level, paused, setCamera]);
+  }, [isGlobe, paused, setCamera]);
   const markInteraction = useCallback(() => {
     lastInteractionAt.current = Date.now();
   }, []);
   const onInteractionStateChange = useCallback((state: InteractionState) => {
-    interacting.current = Boolean(
+    const active = Boolean(
       state.isDragging ||
       state.isPanning ||
       state.isZooming ||
       state.isRotating ||
       state.inTransition,
     );
-    lastInteractionAt.current = Date.now();
+    // 受控相机更新也会发出空闲通知，不能把自转帧当作用户操作。
+    if (active || interacting.current) lastInteractionAt.current = Date.now();
+    interacting.current = active;
   }, []);
   return {
     camera,

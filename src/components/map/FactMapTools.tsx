@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { FactTimeFilter } from "../FilterBar";
 import { useEffect, useRef, useState } from "react";
 import { Button, Input, Tooltip } from "antd";
 import {
@@ -10,7 +12,7 @@ import type { InputRef } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 
-const FactMapTools = () => {
+const FactMapTools = ({ navigation, fullscreen }: { navigation: ReactNode; fullscreen: ReactNode }) => {
   const { filters, setFilters, influence, setOverlay } =
     useDashboardStore(
       useShallow((s) => ({
@@ -33,6 +35,8 @@ const FactMapTools = () => {
   };
   return (
     <>
+      <div className="fact-controls-row">
+      {navigation}
       <Tooltip title="地理影响圆" placement="left">
         <Button
           type={influence ? "primary" : "text"}
@@ -43,16 +47,8 @@ const FactMapTools = () => {
           onClick={() => setOverlay("influence", !influence)}
         />
       </Tooltip>
-      <Tooltip title="视频" placement="left">
-        <Button
-          type={filters.videoOnly ? "primary" : "text"}
-          shape="circle"
-          icon={<VideoCameraOutlined />}
-          aria-label="显示视频"
-          aria-pressed={filters.videoOnly}
-          onClick={() => setFilters({ videoOnly: !filters.videoOnly })}
-        />
-      </Tooltip>
+      </div>
+      <div className="fact-controls-row">
       <div className="map-search-anchor">
         <form
           className={`map-search-panel${searchOpen ? " is-open" : ""}`}
@@ -93,6 +89,19 @@ const FactMapTools = () => {
           onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
         />
       </div>
+      <Tooltip title="视频" placement="left">
+        <Button
+          type={filters.videoOnly ? "primary" : "text"}
+          shape="circle"
+          icon={<VideoCameraOutlined />}
+          aria-label="显示视频"
+          aria-pressed={filters.videoOnly}
+          onClick={() => setFilters({ videoOnly: !filters.videoOnly })}
+        />
+      </Tooltip>
+      {fullscreen}
+      </div>
+      <div className="fact-controls-time"><FactTimeFilter /></div>
     </>
   );
 };

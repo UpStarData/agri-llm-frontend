@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import VarietySelect from "./VarietySelect";
-import { Button, Checkbox, Collapse, Space, Spin, Switch } from "antd";
+import { Button, Checkbox, Collapse, Space, Spin } from "antd";
 import { useShallow } from "zustand/react/shallow";
 import { useDashboardStore } from "@/store";
 import type { useRelationCatalogs, useRelationQueries } from "@/hooks/useRelationQueries";
@@ -202,14 +202,13 @@ const RelationMenu = ({ count, catalogs }: IProps) => {
         ))}
       </div>
       <div className="menu-section">
-        <div className="menu-section-title">关系显示</div>
+        <div className="menu-section-title">视图控制</div>
         <div className="drawer-control-header">
           <span>跨区域关系</span>
-          <Switch
-            size="small"
+          <Checkbox
             aria-label="跨区域关系"
             checked={filters.crossRegion}
-            onChange={(crossRegion) => setFilters({ crossRegion })}
+            onChange={(event) => setFilters({ crossRegion: event.target.checked })}
           />
         </div>
       </div>

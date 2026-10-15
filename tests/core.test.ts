@@ -94,7 +94,7 @@ describe('业务数据与地图交互边界', () => {
     expect(layers.find((layer) => layer.id === 'overlay-ports')?.props.data).toBe(data.overlays?.ports)
     expect(layers.find((layer) => layer.id === 'overlay-fact-sources')?.props.data).toBe(data.overlays?.factSources)
     const rings = createInfluenceLayers([], 0.5, false)
-    expect(rings).toHaveLength(4)
+    expect(rings).toHaveLength(7)
     expect(rings[0].props.pickable).toBe(false)
     expect(rings[0].props.data).toEqual([])
   })
@@ -155,14 +155,14 @@ describe('业务数据与地图交互边界', () => {
     worldLayer.onClick({ object: { properties: { regionId: 'CN' } } } as never, {} as never)
     expect(selected).toEqual(['US', 'CN'])
   })
-  it('全球平面图压平高纬度且不改动球体使用的原始边界', () => {
+  it('全球平面图保留原始纬度与边界比例', () => {
     const world = JSON.parse(readFileSync('public/boundaries/world.geojson', 'utf8')) as Boundaries
     const flat = flattenWorldBoundaries(world)
-    expect(flat.features[0].geometry.coordinates).not.toBe(world.features[0].geometry.coordinates)
+    expect(flat.features[0].geometry.coordinates).toEqual(world.features[0].geometry.coordinates)
     expect(flat.features.some((feature) => feature.properties.name === 'Antarctica')).toBe(false)
     expect(world.features.some((feature) => feature.properties.name === 'Antarctica')).toBe(true)
     expect(world.features[0].geometry).toEqual(JSON.parse(readFileSync('public/boundaries/world.geojson', 'utf8')).features[0].geometry)
-    expect(flattenWorldPosition([0, 80])[1]).toBeLessThan(70)
+    expect(flattenWorldPosition([0, 80])).toEqual([0, 80])
     expect(flattenWorldPosition([0, 0])).toEqual([0, 0])
   })
   it('滚轮单格与按钮使用相同步长', () => {

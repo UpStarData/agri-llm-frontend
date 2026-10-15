@@ -77,7 +77,7 @@ describe("生态亮色主题集成", () => {
     const light = createInfluenceLayers([], 0.2, false, "light");
     const dark = createInfluenceLayers([], 0.2, false, "dark");
     expect(light.map((layer) => layer.id)).toEqual(dark.map((layer) => layer.id));
-    expect(light[0].props.getColor).toEqual([...rgb(eco.priorityRoute), 152]);
+    expect(light[1].props.getColor).toEqual([...rgb(eco.priorityRoute), Math.round(Math.sin(Math.PI * 0.2) ** 1.4 * 210)]);
     expect(light.every((layer) => !layer.props.pickable)).toBe(true);
     expect(light[0].props.updateTriggers!.getColor).toEqual([0.2, "light"]);
   });

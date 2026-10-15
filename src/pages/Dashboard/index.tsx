@@ -5,7 +5,6 @@ import DashboardHeader from "@/components/DashboardHeader";
 import FactMenu from "@/components/FactMenu";
 import RelationMenu from "./component/RelationMenu";
 import EntityList from "./component/EntityList";
-import RelationContextBar from "./component/RelationContextBar";
 import {
   useRelationCatalogs,
   useRelationQueries,
@@ -151,7 +150,6 @@ const Dashboard = () => {
             categories={relationCatalogs.categories.data}
           />
         )}
-        {mode === "relation" && <RelationContextBar />}
         <ProcessingLog />
         <DetailDrawer catalogs={relationCatalogs} />
       </div>

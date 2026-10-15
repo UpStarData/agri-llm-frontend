@@ -7,6 +7,7 @@ import { flattenWorldPosition } from "./map";
 import type { RelationTypeCatalog } from "@/api/relation";
 
 interface IOptions {
+  pointScale?: number;
   colorTheme?: ColorTheme;
   entities: Entity[];
   relations: Relation[];
@@ -252,6 +253,7 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
       getPosition: (e) => transform(e.position!),
       getRadius: (e) => light ? (e.id === highlightedEntityId ? 9 : isLogisticsHub(e) ? 7 : 5) : 6,
       radiusUnits: "pixels",
+      radiusScale: options.pointScale ?? 1,
       getFillColor: (e) =>
         light ? rgba(entityThemeColor(e), !highlightedEntityId || neighbors.has(e.id) ? 245 : 60) :
         glowingEntityIds.includes(e.id)

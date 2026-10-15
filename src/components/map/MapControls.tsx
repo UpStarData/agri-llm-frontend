@@ -1,6 +1,5 @@
 import { Button } from "antd";
 import {
-  AimOutlined,
   ApartmentOutlined,
   CompressOutlined,
   EnvironmentOutlined,
@@ -28,12 +27,25 @@ const MapControls = ({
   isGraph,
   isFullscreen,
   onViewChange,
-  onToggleGlobe,
   onFullscreen,
   onZoom,
-  onReset,
 }: IProps) => {
   const mode = useDashboardStore((s) => s.mode);
+  const visible = useDashboardStore((s) => s.mapControlsVisible);
+  if (!visible) return null;
+  if (mode === "fact") return (
+    <div className="map-controls map-controls-fact" aria-label="地图操作">
+      <FactMapTools
+        navigation={<>
+          <Tooltip title="放大"><Button type="text" shape="circle" icon={<PlusOutlined />} aria-label="放大地图" onClick={() => onZoom(1)} /></Tooltip>
+          <Tooltip title="缩小"><Button type="text" shape="circle" icon={<MinusOutlined />} aria-label="缩小地图" onClick={() => onZoom(-1)} /></Tooltip>
+          <Tooltip title="3D 地图"><Button type={isGlobe ? "primary" : "text"} shape="circle" icon={<GlobalOutlined />} aria-label="3D 地图" aria-pressed={isGlobe} onClick={() => onViewChange("3d")} /></Tooltip>
+          <Tooltip title="2D 地图"><Button type={!isGlobe ? "primary" : "text"} shape="circle" icon={<EnvironmentOutlined />} aria-label="2D 地图" aria-pressed={!isGlobe} onClick={() => onViewChange("2d")} /></Tooltip>
+        </>}
+        fullscreen={<Tooltip title={isFullscreen ? "退出全屏" : "全屏"}><Button type="text" shape="circle" icon={isFullscreen ? <CompressOutlined /> : <ExpandOutlined />} aria-label={isFullscreen ? "退出全屏" : "展开全屏"} onClick={onFullscreen} /></Tooltip>}
+      />
+    </div>
+  );
   return (
     <div className="map-controls" aria-label="地图操作">
       {mode === "relation" && (
@@ -72,15 +84,6 @@ const MapControls = ({
           />
         </Tooltip>
       )}
-      {mode === "fact" && (
-        <Button
-          type="text"
-          shape="circle"
-          icon={<GlobalOutlined />}
-          aria-label={isGlobe ? "切换到平面地图" : "切换到球体地图"}
-          onClick={onToggleGlobe}
-        />
-      )}
       <>
         <Button
           type="text"
@@ -104,16 +107,7 @@ const MapControls = ({
         aria-label={isFullscreen ? "退出全屏" : "展开全屏"}
         onClick={onFullscreen}
       />
-      {mode === "fact" && (
-        <Button
-          type="text"
-          shape="circle"
-          icon={<AimOutlined />}
-          aria-label="重置地图视角"
-          onClick={onReset}
-        />
-      )}
-      {mode === "fact" ? <FactMapTools /> : <RelationMapTools />}
+      <RelationMapTools />
     </div>
   );
 };

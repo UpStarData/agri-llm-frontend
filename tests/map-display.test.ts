@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { mergeChinaBoundaries } from "../src/utils/map";
+import type { Boundaries } from "../src/types";
 import { describe, expect, it } from "vitest";
 import { layoutFactPoints } from "../src/utils/factPointLayout";
 import { createGlobeSurface } from "../src/utils/globeSurface";
@@ -39,4 +42,19 @@ describe("事实点位展开与球面遮挡", () => {
     expect(Math.min(...positions.map((p) => p[1]))).toBe(-90);
     expect(Math.max(...positions.map((p) => p[1]))).toBe(90);
   });
+});
+
+// 使用实际边界文件，防止世界地图再次把台湾拆成独立的拾取对象。
+it("中国各区域合并为同一个可高亮要素，保留全部多边形及原始数据", () => {
+  const source = JSON.parse(readFileSync("public/boundaries/world.geojson", "utf8")) as Boundaries;
+  const original = JSON.stringify(source);
+  const result = mergeChinaBoundaries(source);
+  const ids = new Set(["CN", "TW", "HK", "MO"]);
+  const polygons = source.features.filter((f) => ids.has(f.properties.regionId))
+    .flatMap((f) => f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates);
+  const china = result.features.find((f) => f.properties.regionId === "CN")!;
+  expect(china.geometry).toEqual({ type: "MultiPolygon", coordinates: polygons });
+  expect(result.features.some((f) => ["TW", "HK", "MO"].includes(f.properties.regionId))).toBe(false);
+  expect(JSON.stringify(source)).toBe(original);
+  expect(mergeChinaBoundaries(result)).toEqual(result);
 });

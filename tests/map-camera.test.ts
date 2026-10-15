@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WebMercatorViewport } from "@deck.gl/core";
 import { clampFlatView, getGlobeZoomLimits, getRegionView, isGlobeMaxZoom } from "../src/utils/map";
 import { getLandColor } from "../src/utils/mapLayers";
 import { readTheme } from "../src/utils/theme";
@@ -16,27 +15,22 @@ describe("地图外观与相机边界", () => {
     expect(readTheme()).toBe("light");
   });
 
-  it.each([[1440, 900], [1920, 680], [490, 850]])("%s × %s 下平移保留操作空间且不会无限循环", (width, height) => {
+  it.each([[1440, 900], [1920, 680], [490, 850]])("%s × %s 下允许连续跨越日期变更线", (width, height) => {
     const center = getRegionView("world", undefined, undefined, width, height);
-    const viewport = new WebMercatorViewport({ ...center, width, height });
-    const within = { ...center, longitude: center.longitude + 5, latitude: center.latitude + 2 };
-    expect(clampFlatView(within, center, width, height)).toMatchObject(within);
-    const east = clampFlatView({ ...center, longitude: 1000, latitude: 89 }, center, width, height);
-    const west = clampFlatView({ ...center, longitude: -1000, latitude: -89 }, center, width, height);
-    expect(east.longitude).toBeGreaterThan(center.longitude);
-    expect(east.longitude).toBeLessThanOrEqual(center.longitude + 90);
-    expect(west.longitude).toBeLessThan(center.longitude);
-    expect(west.longitude).toBeGreaterThanOrEqual(center.longitude - 90);
-    expect(east.latitude).toBeCloseTo(viewport.unproject([width / 2, height * 0.25])[1]);
-    expect(west.latitude).toBeCloseTo(viewport.unproject([width / 2, height * 0.75])[1]);
-    expect(clampFlatView(east, center, width, height)).toEqual(east);
+    for (const longitude of [-1000, -181, 181, 1000]) {
+      const view = clampFlatView({ ...center, longitude, latitude: 89 });
+      expect(view.longitude).toBe(longitude);
+      expect(view.latitude).toBe(85);
+      expect(view.zoom).toBe(center.zoom);
+    }
   });
 
-  it("国家视角的平移围绕该区域限制，缩放级别不受平移影响", () => {
-    const center = getRegionView("country", "CN", undefined, 1440, 900);
-    const view = clampFlatView({ ...center, zoom: center.zoom + 2, longitude: -500 }, center, 1440, 900);
-    expect(view.longitude).toBeGreaterThan(0);
-    expect(view.zoom).toBe(center.zoom + 2);
+  it.each([[0, 0], [1, 1], [32, 64], [64, 32], [NaN, Infinity]])("%s × %s 的临时容器尺寸不会导致 fitBounds 断言失败", (width, height) => {
+    for (const level of ["world", "country", "province"] as const) {
+      const view = getRegionView(level, undefined, undefined, width, height);
+      expect(Number.isFinite(view.zoom)).toBe(true);
+      expect(Number.isFinite(view.minZoom)).toBe(true);
+    }
   });
 
   it.each([0, 45, 80, -60])("纬度 %s 的球体达到对应缩放上限才切换", (latitude) => {
