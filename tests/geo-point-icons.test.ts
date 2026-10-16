@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { GEO_POINT_ICON_SIZE, geoPointIcon } from "../src/utils/geoPointIcons";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { GEO_POINT_ICON_SIZE, cachedSvgFetch, geoPointIcon } from "../src/utils/geoPointIcons";
 import type { GeoPointKind } from "../src/api/fact";
 import type { ColorTheme } from "../src/types";
 
@@ -68,5 +68,36 @@ describe("叠加图层点位图标", () => {
     for (const kind of KINDS) {
       expect(geoPointIcon(kind, "dark")).toBe(geoPointIcon(kind, "dark"));
     }
+  });
+});
+
+describe("叠加图层图标文件缓存", () => {
+  const svgResponse = () =>
+    new Response("<svg/>", { headers: { "Content-Type": "image/svg+xml" } });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("同一地址只下载一次，重建图层或切投影都不再发请求", async () => {
+    const download = vi.fn(async () => svgResponse());
+    vi.stubGlobal("fetch", download);
+    const first = await cachedSvgFetch("/icon.svg");
+    const second = await cachedSvgFetch("/icon.svg");
+    expect(download).toHaveBeenCalledTimes(1);
+    // 每次都要给 deck.gl 一个没被读过的响应，第二次仍能正常解码。
+    expect(second.headers.get("content-type")).toBe("image/svg+xml");
+    // loaders.gl 靠 Response.url 的后缀判断按 SVG 源码解码，丢了后缀图标就不显示。
+    expect(second.url).toMatch(/\.svg$/);
+    expect(await second.arrayBuffer()).toEqual(await first.arrayBuffer());
+  });
+
+  it("加载失败不写缓存，下次打包仍有重新加载的机会", async () => {
+    const download = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(new Response("", { status: 500 }))
+      .mockResolvedValueOnce(svgResponse());
+    vi.stubGlobal("fetch", download);
+    await expect(cachedSvgFetch("/broken.svg")).rejects.toThrow();
+    expect((await cachedSvgFetch("/broken.svg")).status).toBe(200);
+    expect(download).toHaveBeenCalledTimes(2);
   });
 });

@@ -14,7 +14,6 @@ interface IProps {
 
 const FactDetail = ({ id }: IProps) => {
   const detail = useFactDetail(id);
-  const mode = useDashboardStore((s) => s.mode);
   const enterRelation = useDashboardStore((s) => s.enterRelation);
   const fact = detail.data?.fact;
   if (detail.isPending) return <Spin description="正在加载事实详情" />;
@@ -66,9 +65,9 @@ const FactDetail = ({ id }: IProps) => {
       </DetailSection>
       <DetailSection
         title="涉及本体"
-        hint={mode === "fact" && entities.length ? "点击进入关联层" : undefined}
+        hint={entities.length ? "点击进入关联层" : undefined}
       >
-        {mode === "fact" && entities.length ? (
+        {entities.length ? (
           <div className="detail-chip-list">
             {entities.map((entity) => (
               <Button
@@ -99,7 +98,9 @@ const FactDetail = ({ id }: IProps) => {
       </DetailSection>
       <DetailSection title="关键数值">
         {fact.keyMetrics ? (
-          <p className="detail-paragraph detail-key-metrics-text">{fact.keyMetrics}</p>
+          <p className="detail-paragraph detail-key-metrics-text">
+            {fact.keyMetrics}
+          </p>
         ) : (
           <p className="detail-empty">来源材料未提供可核对的数值和口径。</p>
         )}
@@ -132,46 +133,7 @@ const FactDetail = ({ id }: IProps) => {
         />
       </DetailSection>
       <TypeFieldsSection fields={fact.typeFields} />
-      {/* <DetailSection
-        title="证据与来源"
-        hint={`${fact.evidenceCount ?? sources.length} 条`}
-      >
-        {sources.length ? (
-          sources.map((source, index) => {
-            const title =
-              sourceText(source.title) ??
-              sourceText(source.sourceName) ??
-              sourceText(source.name) ??
-              `来源 ${index + 1}`;
-            const excerpt =
-              sourceText(source.excerpt) ??
-              sourceText(source.content) ??
-              sourceText(source.summary);
-            const url =
-              sourceUrl(source.url) ??
-              sourceUrl(source.sourceUrl) ??
-              sourceUrl(source.link);
-            return (
-              <article
-                className="detail-evidence-card"
-                key={sourceText(source.id) ?? index}
-              >
-                <strong>{title}</strong>
-                {excerpt && <p>{excerpt}</p>}
-                {url && (
-                  <a href={url} target="_blank" rel="noopener noreferrer">
-                    来源链接
-                  </a>
-                )}
-              </article>
-            );
-          })
-        ) : (
-          <p className="detail-empty">暂无可展示的来源详情</p>
-        )}
-      </DetailSection> */}
 
-      
       <DetailSection title="事实形成过程">
         <DetailRows
           items={[
@@ -183,17 +145,18 @@ const FactDetail = ({ id }: IProps) => {
           ]}
         />
       </DetailSection>
-      {mode === "fact" && (
-        <div className="detail-actions">
-          <Button
-            onClick={() =>
-              enterRelation({ factId: fact.factId, factTitle: fact.title })
-            }
-          >
-            在关联层查看
-          </Button>
-        </div>
-      )}
+      <div className="detail-actions">
+        <Button
+          onClick={() =>
+            enterRelation({ factId: fact.factId, factTitle: fact.title })
+          }
+        >
+          在关联层查看
+        </Button>
+        <Button disabled onClick={() => {}}>
+          基于该事实发起推演
+        </Button>
+      </div>
     </>
   );
 };

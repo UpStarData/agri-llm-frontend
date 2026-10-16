@@ -191,7 +191,7 @@ const FactMapTools = ({ zoom, views, fullscreen }: { zoom: ReactNode; views: Rea
               className={`fact-tool-panel fact-tool-panel-${key}`}
               role="group"
               aria-label={label}
-              aria-hidden={!open}
+              aria-hidden={key === "time" ? undefined : !open}
               inert={!open}
             >
               {content}

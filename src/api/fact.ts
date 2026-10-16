@@ -39,6 +39,8 @@ export interface ApiFact {
 }
 export interface FactPage { items: ApiFact[]; total: number }
 export interface FactPoint {
+  /** 时间切换时的热度序列：倒序播放，整轮 3.2 秒先快后慢，最终停在首项。 */
+  intensityArr?: number[];
   /** 热度/时效性，0–100；越低越接近灰色，缺省时保留主题色。 */
   intensity?: number;
   impactRadiusKm?: number | null;
@@ -54,6 +56,7 @@ export interface FactDetail { fact: ApiFact; entities: unknown[]; evidence: unkn
 export interface GeoPoint {
   pointId: string;
   name: string;
+  description?: string | null;
   kind: GeoPointKind;
   geoPoint: [number, number];
 }

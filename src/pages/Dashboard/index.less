@@ -991,17 +991,45 @@
   font-size: 12px;
 }
 
+// 详情区：最多并排两个详情，第一个贴右侧，钻取详情排在它左边
+.detail-stack {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  pointer-events: none;
+  .dashboard-stage.right-panel-open & {
+    right: var(--right-panel-width);
+  }
+  &.is-split .fact-detail {
+    width: min(600px, 50%);
+  }
+  // 窄屏并排放不下，只留最新打开的那个详情
+  @media (max-width: 760px) {
+    &.is-split {
+      .fact-detail {
+        width: 100%;
+      }
+      .fact-detail:first-child {
+        display: none;
+      }
+    }
+  }
+}
+
 // 事实、本体与关系详情
 .fact-detail {
   .floating-panel();
   --detail-muted: #9bb6d2;
   --detail-line: rgba(143, 181, 215, 0.22);
   --detail-card: rgba(15, 39, 75, 0.56);
-  position: absolute;
-  z-index: 6;
-  top: 0;
-  bottom: 0;
-  right: 0;
+  position: relative;
+  flex: 0 0 auto;
+  pointer-events: auto;
   width: min(600px, 100%);
   border-radius: 0;
   display: flex;
@@ -1206,12 +1234,7 @@
     --detail-card: var(--eco-card);
     box-shadow: var(--eco-shadow);
   }
-  @media (max-width: 1100px) {
-    top: 0;
-  }
   @media (max-width: 760px) {
-    top: 0;
-    right: 0;
     width: 100%;
   }
   .theme-light .mode-relation & {
@@ -1223,20 +1246,6 @@
     box-shadow: 0 12px 40px rgba(1, 8, 27, 0.3);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
-  }
-  .dashboard-stage.right-panel-open & {
-    right: var(--right-panel-width);
-    width: min(600px, calc(100% - var(--right-panel-width)));
-  }
-  .dashboard-stage:not(.right-panel-open) & {
-    right: 0;
-    width: min(600px, 100%);
-  }
-  @media (max-width: 760px) {
-    .dashboard-stage:not(.right-panel-open) & {
-      right: 0;
-      width: min(600px, 100%);
-    }
   }
 }
 

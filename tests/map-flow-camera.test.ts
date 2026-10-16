@@ -26,6 +26,9 @@ vi.mock("react", () => ({
 }));
 vi.mock("../src/store", () => ({ useDashboardStore: (selector) => selector(hooks.state) }));
 vi.mock("zustand/react/shallow", () => ({ useShallow: (selector) => selector }));
+vi.mock("../src/hooks/useFactIntensityAnimation", () => ({
+  useFactIntensityAnimation: () => ({ hidePoints: false, seconds: undefined }),
+}));
 import { useMapLayers as renderLayers } from "../src/hooks/useMapLayers";
 
 const entities: Entity[] = [
@@ -36,6 +39,7 @@ const relations: Relation[] = [{ id: "a-b", sourceId: "a", targetId: "b", type: 
 const options = {
   data: { entities, relations }, width: 1200, height: 800,
   isGlobe: true, flatWorld: false, paused: false,
+  factsPending: false,
   setIsGlobe: () => {}, changeRegion: () => {},
 };
 const render = (camera: MapViewState) => {

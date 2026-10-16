@@ -23,8 +23,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
   if (!relation) return <Empty description="暂无详情" />;
   const { source, target, typeId } = relation.overview;
   const type = relationTypeInfo(typeId, catalogs.types.data);
-  const arrow =
-    (relation.directed ?? type?.directed) === false ? "↔" : "→";
+  const arrow = (relation.directed ?? type?.directed) === false ? "↔" : "→";
   return (
     <>
       <DetailIntro
@@ -32,8 +31,7 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
         label="关系 ID"
         title={
           <>
-            {source.canonicalName} {arrow}{" "}
-            {type?.name ?? typeId} {arrow}{" "}
+            {source.canonicalName} {arrow} {type?.name ?? typeId} {arrow}{" "}
             {target.canonicalName}
           </>
         }
@@ -119,7 +117,8 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
         }))}
         preset={relation.sourceType === "preset"}
       />
-      {(relation.formation?.firstWrittenAt || relation.formation?.lastUpdatedAt) && (
+      {(relation.formation?.firstWrittenAt ||
+        relation.formation?.lastUpdatedAt) && (
         <DetailSection title="形成过程">
           <DetailRows
             items={[
@@ -145,6 +144,11 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
           />
         </DetailSection>
       )}
+      <div className="detail-actions">
+        <Button disabled onClick={() => {}}>
+          基于该关系发起推演
+        </Button>
+      </div>
     </>
   );
 };

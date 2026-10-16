@@ -18,8 +18,9 @@ import { useFactList, useFactPoints, useFactTaxonomy } from "@/hooks";
 import dayjs, { DISPLAY_TIMEZONE } from "@/utils/date";
 import { useFactLive } from "@/hooks/useFactLive";
 import { CardTypes, TimeRange } from "@/api/fact";
+import type { FactRequest } from "@/api/fact";
 import { compactCategoryIds, provinceApiCode } from "@/utils/factFilters";
-import { getFactView, getRegionFactView } from "@/utils/factView";
+import { getFactView } from "@/utils/factView";
 import "./index.less";
 
 const MapCanvas = lazy(() => import("@/components/map/MapCanvas"));
@@ -36,8 +37,6 @@ const Dashboard = () => {
     dates,
     keyword,
     videoOnly,
-    level,
-    regionId,
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
@@ -50,8 +49,6 @@ const Dashboard = () => {
       keyword: s.factFilters.keyword,
       videoOnly: s.factFilters.videoOnly,
       dates: s.dateRange,
-      level: s.level,
-      regionId: s.regionId,
     })),
   );
   const taxonomyQuery = useFactTaxonomy();
@@ -81,23 +78,16 @@ const Dashboard = () => {
     Q: keyword || undefined,
     CardTypes: videoOnly ? CardTypes.Video : undefined,
   };
-  // 地图星点跟地图取景走：点击中国/省份/回到全球只影响地图上展示的那一批点位。
-  const mapProvinceId = level === "province" ? regionId ?? "" : "";
-  const mapParams = {
+  // 区域相关的查询一律跟左侧「区域筛选」走：地图放大缩小、点击下钻只改取景，
+  // 既不换数据也不重新请求接口，地图上的取景与这批查询条件无关。
+  const params: FactRequest = {
     ...sharedParams,
-    view: getRegionFactView(level, regionId),
-    Province: provinceApiCode(mapProvinceId),
+    view: getFactView(countryId, provinceId),
+    Province: provinceId ? provinceApiCode(provinceId) : undefined,
   };
-  const factPoints = useFactPoints(mapParams);
-  const factLive = useFactLive(mapParams, mode === "fact");
-  // 右侧卡片跟左侧区域筛选走，与地图取景无关，切换视角时列表保持原样。
-  const factList = useFactList(
-    {
-      ...sharedParams,
-      view: getFactView(countryId, provinceId),
-      Province: provinceId ? provinceApiCode(provinceId) : undefined,
-    },
-  );
+  const factPoints = useFactPoints(params);
+  const factLive = useFactLive(params, mode === "fact");
+  const factList = useFactList(params);
   const relationCatalogs = useRelationCatalogs();
   const relationQueries = useRelationQueries(
     relationCatalogs.categories.data,
@@ -134,6 +124,7 @@ const Dashboard = () => {
         >
           <MapCanvas
             points={factPoints.data}
+            factsFetching={factPoints.isFetching}
             glowingFactIds={factLive.ids}
             data={mode === "relation" ? relationMap : undefined}
             graphData={relationGraph}

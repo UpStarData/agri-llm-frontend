@@ -293,6 +293,8 @@ describe("关联上下文与详情", () => {
   it("事实上下文进入不带入事实地域，返回恢复；同上下文不重建", () => {
     const store = useDashboardStore.getState();
     store.setFactRegion("CN", "430000");
+    // 区域筛选不再移动地图，取景由地图自己切换，返回时同样要恢复。
+    store.setRegion("province", "430000");
     store.select({ kind: "fact", id: "f1" });
     store.enterRelation({ factId: "f1", factTitle: "事实1" });
     expect(useDashboardStore.getState()).toMatchObject({
@@ -327,23 +329,37 @@ describe("关联上下文与详情", () => {
       "e:cmd:cherry",
     ]);
   });
-  it("支撑事实在当前tab中打开，逐层返回原本体与关系", () => {
+  it("支撑事实在当前tab中打开，详情区最多并排两个", () => {
     const store = useDashboardStore.getState();
     store.setMode("relation");
     store.select({ kind: "entity", id: "e1" });
     store.pushDetail({ kind: "relation", id: "r1" });
+    expect(useDashboardStore.getState().detailStack).toEqual([
+      { kind: "entity", id: "e1" },
+      { kind: "relation", id: "r1" },
+    ]);
     store.pushDetail({ kind: "fact", id: "f1" });
     expect(useDashboardStore.getState().mode).toBe("relation");
+    expect(useDashboardStore.getState().detailStack).toEqual([
+      { kind: "relation", id: "r1" },
+      { kind: "fact", id: "f1" },
+    ]);
     store.backDetail();
     expect(useDashboardStore.getState().selection).toEqual({
       kind: "relation",
       id: "r1",
     });
-    store.backDetail();
-    expect(useDashboardStore.getState().selection).toEqual({
-      kind: "entity",
-      id: "e1",
-    });
+  });
+  it("重新打开同类详情只留最新一层", () => {
+    const store = useDashboardStore.getState();
+    store.setMode("relation");
+    store.select({ kind: "entity", id: "e1" });
+    store.pushDetail({ kind: "fact", id: "f1" });
+    store.pushDetail({ kind: "entity", id: "e2" });
+    expect(useDashboardStore.getState().detailStack).toEqual([
+      { kind: "entity", id: "e2" },
+    ]);
+    expect(useDashboardStore.getState().highlightedEntityId).toBe("e2");
   });
 });
 

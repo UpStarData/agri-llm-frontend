@@ -8,14 +8,15 @@ import type { FactTaxonomy, FactTaxonomyGroup, GeoPointKind } from "@/api/fact";
 import VarietySelect from "@/pages/Dashboard/component/VarietySelect";
 import FilterBar from "@/components/FilterBar";
 import { geoPointIcon } from "@/utils/geoPointIcons";
+import { GEO_POINT_KINDS, geoPointKindAvailable } from "@/utils/geoPointKinds";
 
-const overlays: { label: string; kind: GeoPointKind }[] = [
-  { label: "农作物主要产区", kind: "region" },
-  { label: "港口", kind: "port" },
-  { label: "机场", kind: "airport" },
-  { label: "农贸市场", kind: "market" },
-  { label: "地缘风险区", kind: "risk" },
-];
+const overlayLabels: Record<GeoPointKind, string> = {
+  region: "农作物主要产区",
+  port: "港口",
+  airport: "机场",
+  market: "农贸市场",
+  risk: "地缘风险区",
+};
 
 const FactMenu = ({
   taxonomyQuery,
@@ -33,17 +34,25 @@ const FactMenu = ({
     isPending: taxonomyPending,
     isSuccess: taxonomySuccess,
   } = taxonomyQuery;
-  const { excluded, level, geoKinds, setGeoKinds, setExcluded, colorTheme } =
-    useDashboardStore(
-      useShallow((s) => ({
-        excluded: s.excludedFilterIds.fact,
-        level: s.level,
-        geoKinds: s.factGeoKinds,
-        setGeoKinds: s.setFactGeoKinds,
-        setExcluded: s.setExcludedFilterIds,
-        colorTheme: s.colorTheme,
-      })),
-    );
+  const {
+    excluded,
+    countryId,
+    provinceId,
+    geoKinds,
+    setGeoKinds,
+    setExcluded,
+    colorTheme,
+  } = useDashboardStore(
+    useShallow((s) => ({
+      excluded: s.excludedFilterIds.fact,
+      countryId: s.factFilters.countryId,
+      provinceId: s.factFilters.provinceId,
+      geoKinds: s.factGeoKinds,
+      setGeoKinds: s.setFactGeoKinds,
+      setExcluded: s.setExcludedFilterIds,
+      colorTheme: s.colorTheme,
+    })),
+  );
   const changeCategory = (key: string) =>
     setExcluded(
       "fact",
@@ -194,10 +203,13 @@ const FactMenu = ({
       <div className="menu-section">
         <div className="menu-section-title">叠加数据图层</div>
         <div className="overlay-options">
-          {overlays.map(({ label, kind }) => {
-            const unavailable =
-              (kind === "risk" && level !== "world") ||
-              (kind === "port" && level === "province");
+          {GEO_POINT_KINDS.map((kind) => {
+            const unavailable = !geoPointKindAvailable(
+              kind,
+              countryId,
+              provinceId,
+            );
+            const label = overlayLabels[kind];
             return (
               <div className="drawer-control-header" key={kind}>
                 <span className={`overlay-label${unavailable ? " is-off" : ""}`}>

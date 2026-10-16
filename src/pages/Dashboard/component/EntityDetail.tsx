@@ -25,12 +25,21 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
   const relations = (entity.relations ?? []).filter(
     (group) => !excluded.includes(group.typeId),
   );
-  const relationCount = relations.reduce((count, group) => count + group.items.length, 0);
+  const relationCount = relations.reduce(
+    (count, group) => count + group.items.length,
+    0,
+  );
   const regionPath = entity.geo?.regionPath ?? [];
-  const commodities = (entity.commodities ?? []).filter((item) => item.name?.trim());
+  const commodities = (entity.commodities ?? []).filter((item) =>
+    item.name?.trim(),
+  );
   return (
     <>
-      <DetailIntro id={entity.entityId} label="本体 ID" title={entity.canonicalName} />
+      <DetailIntro
+        id={entity.entityId}
+        label="本体 ID"
+        title={entity.canonicalName}
+      />
       <RecordMedia
         images={entity.imageArr}
         videos={entity.videoArr}
@@ -43,7 +52,10 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
             {
               key: "type",
               label: "分类",
-              value: entityCategoryName(entity.category.categoryId, catalogs.categories.data),
+              value: entityCategoryName(
+                entity.category.categoryId,
+                catalogs.categories.data,
+              ),
             },
             {
               key: "address",
@@ -51,7 +63,8 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
               value: entity.geo?.geoPoint
                 ? regionPath.map(({ name }) => name).join(" › ") || "—"
                 : [regionPath.map(({ name }) => name).join(" › "), "暂无位置"]
-                    .filter(Boolean).join(" / "),
+                    .filter(Boolean)
+                    .join(" / "),
             },
             // ...(regionPath?.length
             //   ? [
@@ -113,13 +126,17 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
                   className="detail-relation-link"
                   key={relation.relationId}
                   type="link"
-                  onClick={() => pushDetail({ kind: "relation", id: relation.relationId })}
+                  onClick={() =>
+                    pushDetail({ kind: "relation", id: relation.relationId })
+                  }
                 >
                   {relation.direction === "incoming"
                     ? relation.peer.canonicalName
                     : entity.canonicalName}{" "}
-                  {relationTypeInfo(group.typeId, catalogs.types.data)?.directed === false
-                    ? "↔" : "→"}{" "}
+                  {relationTypeInfo(group.typeId, catalogs.types.data)
+                    ?.directed === false
+                    ? "↔"
+                    : "→"}{" "}
                   {relation.direction === "incoming"
                     ? entity.canonicalName
                     : relation.peer.canonicalName}
@@ -135,7 +152,8 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
         facts={entity.supportFacts}
         preset={entity.sourceType === "preset"}
       />
-      {(entity.formation?.firstWrittenAt || entity.formation?.lastUpdatedAt) && (
+      {(entity.formation?.firstWrittenAt ||
+        entity.formation?.lastUpdatedAt) && (
         <DetailSection title="本体形成过程">
           <DetailRows
             items={[
@@ -161,6 +179,12 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
           />
         </DetailSection>
       )}
+
+      <div className="detail-actions">
+        <Button disabled onClick={() => {}}>
+          基于该本体发起推演
+        </Button>
+      </div>
     </>
   );
 };

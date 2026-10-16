@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { readTheme, saveTheme } from "./utils/theme";
+import { GEO_POINT_KINDS } from "./utils/geoPointKinds";
 import type { RelationContext } from "./api/relation";
 import dayjs, { DISPLAY_TIMEZONE } from "./utils/date";
 import type {
@@ -98,6 +99,9 @@ const captureMode = (s: DashboardState): IModeState => ({
   detailStack: s.detailStack,
   highlightedEntityId: s.highlightedEntityId,
 });
+// 详情栈里最后一个本体详情决定地图高亮。
+const lastEntityId = (stack: Selection[]): string | null =>
+  stack.filter((item) => item.kind === "entity").at(-1)?.id ?? null;
 const today = dayjs().tz(DISPLAY_TIMEZONE);
 export const useDashboardStore = create<DashboardState>((set) => ({
   mode: "fact",
@@ -156,13 +160,22 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     })),
   setHighlightedEntity: (highlightedEntityId) => set({ highlightedEntityId }),
   pushDetail: (selection) =>
-    set((s) => ({
-      selection,
-      detailsOpen: true,
-      detailStack: [...s.detailStack, selection],
-      highlightedEntityId:
-        selection.kind === "entity" ? selection.id : s.highlightedEntityId,
-    })),
+    set((s) => {
+      // 同类详情只保留一个：重新打开同类详情时，把它之后的钻取层级一并关掉。
+      const sameKind = s.detailStack.findIndex(
+        (item) => item.kind === selection.kind,
+      );
+      const base =
+        sameKind === -1 ? s.detailStack : s.detailStack.slice(0, sameKind);
+      // 详情区最多并排展示两个，更早的详情退出。
+      const detailStack = [...base, selection].slice(-2);
+      return {
+        selection,
+        detailsOpen: true,
+        detailStack,
+        highlightedEntityId: lastEntityId(detailStack),
+      };
+    }),
   backDetail: () =>
     set((s) => {
       const detailStack = s.detailStack.slice(0, -1);
@@ -171,8 +184,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
         detailStack,
         selection,
         detailsOpen: detailStack.length > 0,
-        highlightedEntityId:
-          selection?.kind === "entity" ? selection.id : s.highlightedEntityId,
+        highlightedEntityId: lastEntityId(detailStack),
       };
     }),
   level: "world",
@@ -189,7 +201,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   },
   excludedFilterIds: { fact: [], relation: [] },
   mapOverlayVisibility: { ports: false, factSources: false, influence: false },
-  factGeoKinds: [],
+  // 叠加数据图层默认全选。
+  factGeoKinds: [...GEO_POINT_KINDS],
   mapControlsVisible: true,
   setMapControlsVisible: (mapControlsVisible) => set({ mapControlsVisible }),
   factFilters: {
@@ -235,12 +248,11 @@ export const useDashboardStore = create<DashboardState>((set) => ({
           : state.modeStates,
       };
     }),
-  // 左侧「区域筛选」：既换卡片筛选条件，也把地图取景切到该区域，并清掉过期详情。
+  // 左侧「区域筛选」：只换业务筛选条件（列表、地图星点、叠加点位、实时订阅）并清掉过期详情。
+  // 地图取景由地图自己的点击与缩放决定，切区域不移动地图。
   setFactRegion: (countryId, provinceId = "") =>
     set((state) => ({
       factFilters: { ...state.factFilters, countryId, provinceId },
-      level: provinceId ? "province" : countryId ? "country" : "world",
-      regionId: provinceId || countryId || undefined,
       selection: null,
       detailsOpen: false,
       detailStack: [],

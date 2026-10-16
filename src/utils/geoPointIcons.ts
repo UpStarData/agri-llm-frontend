@@ -63,3 +63,45 @@ export function geoPointIcon(kind: GeoPointKind, theme: ColorTheme): GeoPointIco
   ICON_CACHE.set(key, icon);
   return icon;
 }
+
+/**
+ * 图标文件缓存。deck.gl 用 loaders.gl 按 URL 取图标，本地资源同样会走一次 fetch：
+ * 新增一种叠加类型、切换 2D/3D 重建 DeckGL 时都要重新打包图标，不缓存就会重复下载同一个文件。
+ * 注意 fetch 只能挂在 loadOptions 顶层，loaders.gl 只在这一层读取它；
+ * 解析器仍按原始 .svg 地址识别 SVG，所以这里只换数据来源，不改 url。
+ */
+const ICON_SOURCES = new Map<string, Promise<ArrayBuffer>>();
+
+const loadIconSource = (url: string) => {
+  const cached = ICON_SOURCES.get(url);
+  if (cached) return cached;
+  const pending = fetch(url)
+    .then((response) => {
+      if (!response.ok) throw new Error(`图标加载失败（${response.status}）`);
+      return response.arrayBuffer();
+    })
+    .catch((error: unknown) => {
+      // 失败不留缓存，下一次打包还有重新加载的机会。
+      ICON_SOURCES.delete(url);
+      throw error;
+    });
+  ICON_SOURCES.set(url, pending);
+  return pending;
+};
+
+/** 供 IconLayer 的 loadOptions 使用：同一地址整场会话只下载一次。 */
+export const cachedSvgFetch: typeof fetch = async (input) => {
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url;
+  const response = new Response(await loadIconSource(url), {
+    headers: { "Content-Type": "image/svg+xml" },
+  });
+  // loaders.gl 只看 Response.url 的后缀决定是否按 SVG 源码解码（见 getBlobOrSVGDataUrl），
+  // 构造出来的响应 url 为空，会被当成没有类型的位图、图标直接不显示，这里补回原始地址。
+  Object.defineProperty(response, "url", { value: url });
+  return response;
+};

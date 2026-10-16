@@ -12,7 +12,7 @@ import { useMapLayers } from "@/hooks/useMapLayers";
 import { useMapCamera } from "@/hooks/useMapCamera";
 import { useSize } from "ahooks";
 import { useBoundaries, useFactGeoPoints } from "@/hooks";
-import type { FactPoint, GeoPointKind, GeoPointsRequest } from "@/api/fact";
+import type { FactPoint, GeoPoint, GeoPointKind, GeoPointsRequest } from "@/api/fact";
 import {
   getGlobeZoomLimits,
   MAP_ZOOM_STEP,
@@ -22,8 +22,10 @@ import MapControls from "@/components/map/MapControls";
 import RelationGraphCanvas from "@/components/map/RelationGraphCanvas";
 import DashboardHeader from "../DashboardHeader";
 import { mapScale } from "@/utils/impact";
-import { getRegionFactView } from "@/utils/factView";
+import { getFactView } from "@/utils/factView";
+import { geoPointKindAvailable } from "@/utils/geoPointKinds";
 import GlobeBackdrop from "./GlobeBackdrop";
+import GeoPointInfoCard from "./GeoPointInfoCard";
 import type { MapData } from "@/types";
 import type { RelationTypeCatalog } from "@/api/relation";
 import { getMapTooltip } from "@/utils/mapTooltip";
@@ -53,6 +55,7 @@ interface IProps {
   points?: FactPoint[];
   glowingFactIds?: string[];
   factsPending: boolean;
+  factsFetching?: boolean;
   relationsPending?: boolean;
   focusEntityIds?: string[];
   relationTypes?: RelationTypeCatalog;
@@ -64,6 +67,7 @@ const MapCanvas = ({
   points,
   glowingFactIds,
   factsPending,
+  factsFetching,
   relationsPending,
   focusEntityIds,
   relationTypes,
@@ -79,6 +83,8 @@ const MapCanvas = ({
     colorTheme,
     mapOverlayVisibility,
     factGeoKinds,
+    countryId,
+    provinceId,
     level,
     regionId,
     setRegion,
@@ -89,12 +95,15 @@ const MapCanvas = ({
       colorTheme: s.colorTheme,
       mapOverlayVisibility: s.mapOverlayVisibility,
       factGeoKinds: s.factGeoKinds,
+      countryId: s.factFilters.countryId,
+      provinceId: s.factFilters.provinceId,
       level: s.level,
       regionId: s.regionId,
       setRegion: s.setRegion,
       setHighlightedEntity: s.setHighlightedEntity,
     })),
   );
+  const [geoPointSelection, setSelectedGeoPoint] = useState<GeoPoint | null>(null);
   const [globeHovered, setGlobeHovered] = useState(false);
   const [gpuError, setGpuError] = useState<string>();
   const [globeModes, setGlobeModes] = useState({ fact: false, relation: true });
@@ -121,19 +130,17 @@ const MapCanvas = ({
     [setRegion],
   );
   const flatWorld = level === "world" && !isGlobe;
+  // 叠加点位跟左侧区域筛选走：地图放大缩小、点击下钻只改取景，不换数据、不重新请求接口。
   const visibleGeoKinds = useMemo(() => (
     mode === "relation"
       ? mapOverlayVisibility.ports
         ? ["port" as GeoPointKind]
         : []
       : factGeoKinds
-  ).filter(
-    (kind) =>
-      !(kind === "risk" && level !== "world") &&
-      !(kind === "port" && level === "province"),
-  ), [mode, mapOverlayVisibility.ports, factGeoKinds, level]);
+  ).filter((kind) => geoPointKindAvailable(kind, countryId, provinceId)),
+    [mode, mapOverlayVisibility.ports, factGeoKinds, countryId, provinceId]);
   const geoRequest: GeoPointsRequest = {
-    view: getRegionFactView(level, regionId),
+    view: getFactView(countryId, provinceId),
     ...(visibleGeoKinds.length
       ? { kinds: visibleGeoKinds as [GeoPointKind, ...GeoPointKind[]] }
       : {}),
@@ -143,6 +150,7 @@ const MapCanvas = ({
     () => geoPoints.data?.filter((point) => visibleGeoKinds.includes(point.kind)),
     [geoPoints.data, visibleGeoKinds],
   );
+  const selectedGeoPoint = visibleGeoPoints?.find((point) => point === geoPointSelection);
   const geoPending =
     visibleGeoKinds.length > 0 &&
     (geoPoints.isPending || geoPoints.isPlaceholderData);
@@ -181,10 +189,13 @@ const MapCanvas = ({
   const layers = useMapLayers({
     data,
     points,
+    factsPending,
+    factsFetching,
   glowingFactIds,
     world: world.data,
     china: china.data,
     geoPoints: visibleGeoPoints,
+    onGeoPointClick: setSelectedGeoPoint,
     camera,
     width,
     height,
@@ -234,6 +245,7 @@ const MapCanvas = ({
           viewState={camera}
           controller={isGlobe ? globeController : flatController}
           onClick={({ object }) => {
+            setSelectedGeoPoint(null);
             if (isGlobe) {
               changeRegion("");
               setIsGlobe(false);
@@ -252,8 +264,17 @@ const MapCanvas = ({
             else setCamera(next);
           }}
           onError={(e) => setGpuError(e.message)}
-          getTooltip={(info) => getMapTooltip(info, colorTheme)}
-        />
+          getTooltip={(info) => selectedGeoPoint && info.layer?.id === "fact-geo-points"
+            ? null : getMapTooltip(info, colorTheme)}
+        >
+          {({ viewport }) => selectedGeoPoint && !isGraph && (
+            <GeoPointInfoCard
+              point={selectedGeoPoint}
+              viewport={viewport}
+              onClose={() => setSelectedGeoPoint(null)}
+            />
+          )}
+        </DeckGL>
       )}
       {isGraph && (
         <RelationGraphCanvas

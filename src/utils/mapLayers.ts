@@ -9,6 +9,7 @@ import {
 } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import type { FactPoint } from "../api/fact";
+import { factIntensityAt } from "./factIntensity";
 import { impactCircle, distanceKm } from "./impact";
 import { flattenWorldPosition, getMapPointScale, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "./map";
 import type {
@@ -405,6 +406,39 @@ export function createInfluenceLayers(
   });
   return [...ripples, boundary];
 }
+
+/** 只更新星点展示，热度为 0 时隐藏；复用底图、位置和拾取数据。 */
+export const applyFactIntensity = (layers: ReturnType<typeof createMapLayers>, seconds: number) =>
+  layers.map((layer) => {
+    if (layer.id !== "real-facts" && layer.id !== "live-fact-glow") return layer;
+    const facts = layer as ScatterplotLayer<FactPoint>;
+    const radius = facts.props.getRadius as number | ((point: FactPoint) => number);
+    const lineWidth = facts.props.getLineWidth as number | ((point: FactPoint) => number);
+    const visibility = {
+      // 同时去掉半径和描边，避免留下灰色轮廓或可拾取的空点；不删除接口数据。
+      getRadius: (point: FactPoint) => factIntensityAt(point, seconds) === 0
+        ? 0 : typeof radius === "function" ? radius(point) : radius,
+      getLineWidth: (point: FactPoint) => factIntensityAt(point, seconds) === 0
+        ? 0 : typeof lineWidth === "function" ? lineWidth(point) : lineWidth,
+      updateTriggers: {
+        ...facts.props.updateTriggers,
+        getRadius: [facts.props.updateTriggers?.getRadius, seconds],
+        getLineWidth: [facts.props.updateTriggers?.getLineWidth, seconds],
+      },
+    };
+    if (layer.id === "live-fact-glow") return facts.clone({
+      ...visibility,
+      transitions: { ...facts.props.transitions, getRadius: 1 },
+    });
+    const fill = facts.props.getFillColor as (point: FactPoint) => RGB | [number, number, number, number];
+    return facts.clone({
+      ...visibility,
+      getFillColor: (point: FactPoint) => fill({ ...point, intensity: factIntensityAt(point, seconds) }),
+      // 颜色已逐帧插值，仅保留 1ms GPU 过渡；直接改为 0 会移除旧过渡缓冲，导致星点不再绘制。
+      transitions: { ...facts.props.transitions, getFillColor: 1 },
+      updateTriggers: { ...visibility.updateTriggers, getFillColor: [facts.props.updateTriggers?.getFillColor, seconds] },
+    });
+  });
 
 /**
  * 把重叠事实的展开坐标写回事实点图层。

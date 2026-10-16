@@ -7,6 +7,7 @@ import { createMapLayers, createInfluenceLayers } from '../src/utils/mapLayers'
 import { useDashboardStore } from '../src/store'
 import { dateRangeToUtc } from '../src/utils/date'
 import { getFactView, getRegionFactView } from '../src/utils/factView'
+import { geoPointKindAvailable } from '../src/utils/geoPointKinds'
 import { FLAT_WORLD_BOUNDS, flattenWorldBoundaries, flattenWorldPosition, getFlatLongitudeLimits, getRegionView, getWheelZoomStep, getWorldZoom, isWorldOverviewZoom, MAP_ZOOM_STEP } from '../src/utils/map'
 import type { Boundaries, MapData } from '../src/types'
 
@@ -17,7 +18,7 @@ function createRelationLayers(options: Omit<Parameters<typeof buildRelationLayer
 
 describe('业务数据与地图交互边界', () => {
   beforeEach(() => useDashboardStore.setState(useDashboardStore.getInitialState(), true))
-  it('默认全球与近一月，区域筛选同步地图视角并清理旧详情', () => {
+  it('默认全球与近一月，区域筛选只换筛选条件并清理旧详情', () => {
     const initial = useDashboardStore.getState()
     expect(initial.factFilters.countryId).toBe('')
     expect(initial.factFilters.provinceId).toBe('')
@@ -25,14 +26,29 @@ describe('业务数据与地图交互边界', () => {
     expect(initial.regionId).toBeUndefined()
     expect(dayjs(initial.dateRange[1]).diff(dayjs(initial.dateRange[0]), 'day')).toBe(29)
     initial.setFactRegion('CN', '430000')
-    expect(useDashboardStore.getState()).toMatchObject({ level: 'province', regionId: '430000' })
+    expect(useDashboardStore.getState().factFilters).toMatchObject({ countryId: 'CN', provinceId: '430000' })
+    // 切区域不动地图取景：地图停在全球，只有地图自己的操作才会换层级。
+    expect(useDashboardStore.getState().level).toBe('world')
+    expect(useDashboardStore.getState().regionId).toBeUndefined()
     useDashboardStore.getState().select({ kind: 'fact', id: 'f-1' })
     useDashboardStore.getState().setFactRegion('CN')
     expect(useDashboardStore.getState().factFilters).toMatchObject({ countryId: 'CN', provinceId: '' })
-    expect(useDashboardStore.getState()).toMatchObject({ level: 'country', regionId: 'CN' })
+    expect(useDashboardStore.getState().level).toBe('world')
+    expect(useDashboardStore.getState().regionId).toBeUndefined()
     expect(useDashboardStore.getState().detailsOpen).toBe(false)
     useDashboardStore.getState().setFactRegion('')
-    expect(useDashboardStore.getState()).toMatchObject({ level: 'world', regionId: undefined })
+    expect(useDashboardStore.getState().factFilters).toMatchObject({ countryId: '', provinceId: '' })
+  })
+  it('叠加图层默认全选，可用性只看区域筛选选中的区域', () => {
+    expect(useDashboardStore.getState().factGeoKinds).toEqual(['region', 'port', 'airport', 'market', 'risk'])
+    expect(geoPointKindAvailable('risk', '', '')).toBe(true)
+    expect(geoPointKindAvailable('risk', 'CN', '')).toBe(false)
+    expect(geoPointKindAvailable('port', 'CN', '430000')).toBe(false)
+    expect(geoPointKindAvailable('region', 'CN', '430000')).toBe(true)
+    // 地图点击下钻只改取景：不改筛选条件，也不因此禁用地缘风险区。
+    useDashboardStore.getState().setRegion('country', 'CN')
+    const { countryId, provinceId } = useDashboardStore.getState().factFilters
+    expect(geoPointKindAvailable('risk', countryId, provinceId)).toBe(true)
   })
   it('地图取景切换只改地图，右侧卡片的区域筛选保持不变', () => {
     const store = useDashboardStore.getState()

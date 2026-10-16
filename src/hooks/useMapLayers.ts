@@ -7,15 +7,16 @@ import {
 import type { MapViewState } from "@deck.gl/core";
 import { IconLayer } from "@deck.gl/layers";
 import { useDashboardStore } from "@/store";
+import { useFactIntensityAnimation } from "./useFactIntensityAnimation";
 import type { Boundaries, MapData } from "@/types";
 import type { FactPoint, GeoPoint } from "@/api/fact";
 import type { RelationTypeCatalog } from "@/api/relation";
 import { getMapPointScale, flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
 import { getKmPerPixel } from "@/utils/impact";
 import { layoutFactPoints } from "@/utils/factPointLayout";
-import { geoPointIcon } from "@/utils/geoPointIcons";
+import { geoPointIcon, cachedSvgFetch } from "@/utils/geoPointIcons";
 import { createGlobeSurface } from "@/utils/globeSurface";
-import { createMapLayers, createInfluenceLayers, applyFactPointLayout } from "@/utils/mapLayers";
+import { createMapLayers, createInfluenceLayers, applyFactPointLayout, applyFactIntensity } from "@/utils/mapLayers";
 import {
   createRelationLayers,
   prepareRelationPaths,
@@ -29,10 +30,13 @@ const INFLUENCE_CYCLE_SECONDS = 3.6;
 interface Options {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
   points?: FactPoint[];
+  factsPending: boolean;
+  factsFetching?: boolean;
   glowingFactIds?: string[];
   world?: Boundaries;
   china?: Boundaries;
   geoPoints?: GeoPoint[];
+  onGeoPointClick?: (point: GeoPoint) => void;
   camera: MapViewState;
   width: number;
   height: number;
@@ -48,11 +52,14 @@ interface Options {
 /** 按更新频率组织图层：底图、路径、可见性、动画各自缓存。 */
 export function useMapLayers({
   data,
-  points,
+  points: sourcePoints,
+  factsPending,
+  factsFetching,
   glowingFactIds,
   world,
   china,
   geoPoints,
+  onGeoPointClick,
   camera,
   width,
   height,
@@ -69,6 +76,7 @@ export function useMapLayers({
     level,
     regionId,
     colorTheme,
+    dateRange,
     mapOverlayVisibility,
     highlightedEntityId,
     relationGlow,
@@ -79,6 +87,7 @@ export function useMapLayers({
       level: s.level,
       regionId: s.regionId,
       colorTheme: s.colorTheme,
+      dateRange: s.dateRange,
       mapOverlayVisibility: s.mapOverlayVisibility,
       highlightedEntityId: s.highlightedEntityId,
       relationGlow: s.relationGlow,
@@ -86,6 +95,10 @@ export function useMapLayers({
     })),
   );
   const pointScale = getMapPointScale(level, isGlobe);
+  const { seconds: intensitySeconds, hidePoints } = useFactIntensityAnimation(
+    sourcePoints, JSON.stringify(dateRange), !factsPending && !factsFetching, mode === "fact",
+  );
+  const points = hidePoints ? undefined : sourcePoints;
   const [animationSeconds, setAnimationSeconds] = useState(0);
   const influencePhase = (animationSeconds / INFLUENCE_CYCLE_SECONDS) % 1;
   // 影响圆的采样密度按当前视图比例换算，屏幕上的圆有多大就切多少段。
@@ -317,6 +330,11 @@ export function useMapLayers({
     () =>
       new IconLayer<GeoPoint>({
         id: "fact-geo-points",
+        onClick: ({ object }) => {
+          if (!object) return false;
+          onGeoPointClick?.(object);
+          return true;
+        },
         data:
           mode === "fact" || mapOverlayVisibility.ports
             ? (geoPoints ?? []).filter(
@@ -335,12 +353,15 @@ export function useMapLayers({
         // 图标自带主题色，这里不再着色，只保留不透明度。
         getColor: [255, 255, 255, 240],
         // SVG 固定走 HTMLImageElement 解码：部分浏览器不支持把 SVG 转成 ImageBitmap。
-        loadOptions: { image: { type: "image" } },
+        // fetch 走图标缓存，重建图层时不再重复下载同一个文件。
+        loadOptions: { fetch: cachedSvgFetch, image: { type: "image" } },
+        // 球面投影会翻转图标的三角形绕向，默认的背面剔除会把整层图标剔掉，必须关掉。
+        parameters: { cullMode: "none" },
         updateTriggers: { getIcon: colorTheme, getPosition: flatWorld },
       }),
     // 投影切换时为新的 DeckGL 实例重新创建图层。
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [mode, mapOverlayVisibility.ports, geoPoints, flatWorld, isGlobe, colorTheme, pointScale],
+    [mode, mapOverlayVisibility.ports, geoPoints, onGeoPointClick, flatWorld, isGlobe, colorTheme, pointScale],
   );
   const influenceLayers = useMemo(
     () =>
@@ -351,9 +372,15 @@ export function useMapLayers({
     // oxlint-disable-next-line react-hooks/exhaustive-deps
     [mode, mapOverlayVisibility.influence, points, influencePhase, flatWorld, isGlobe, colorTheme, influenceKmPerPixel],
   );
+  const animatedBaseLayers = useMemo(
+    () => intensitySeconds === undefined
+      ? renderedBaseLayers
+      : applyFactIntensity(renderedBaseLayers, intensitySeconds),
+    [renderedBaseLayers, intensitySeconds],
+  );
   return [
     oceanLayer,
-    ...renderedBaseLayers,
+    ...animatedBaseLayers,
     ...influenceLayers,
     ...revealedRelationLayers,
     flowLayer,
