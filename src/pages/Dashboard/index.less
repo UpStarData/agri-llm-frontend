@@ -814,6 +814,48 @@
   }
 }
 
+// 卡片媒体（图片缩略图换行平铺，视频整宽播放）
+.record-media {
+  .layer-record & {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.record-media-item {
+  .layer-record & {
+    flex: none;
+    width: 100%;
+    height: 110px;
+    border: 1px solid @line;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    object-fit: cover;
+  }
+  .theme-light & {
+    border-color: var(--eco-border);
+    background: var(--eco-card);
+  }
+}
+
+.record-media-video {
+  .layer-record & {
+    flex: 1 1 100%;
+    width: 100%;
+    max-height: 140px;
+    border: 1px solid @line;
+    border-radius: 5px;
+    background: #000;
+    object-fit: contain;
+  }
+  .theme-light & {
+    border-color: var(--eco-border);
+  }
+}
+
 // 底部处理日志
 .processing-log {
   .floating-panel();
@@ -988,6 +1030,36 @@
     font-size: 12px;
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     overflow-wrap: anywhere;
+  }
+  // 详情媒体区：紧贴标题下方，缩略图比列表卡片更大，视频整宽播放。
+  .detail-media {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--detail-line);
+  }
+  .detail-media-item {
+    flex: none;
+    width: 100%;
+    height: 200px;
+    border: 1px solid var(--detail-line);
+    border-radius: 6px;
+    background: var(--detail-card);
+    object-fit: cover;
+    @media (max-width: 600px) {
+      width: 88px;
+      height: 88px;
+    }
+  }
+  .detail-media-video {
+    flex: 1 1 100%;
+    width: 100%;
+    max-height: 260px;
+    border: 1px solid var(--detail-line);
+    border-radius: 6px;
+    background: #000;
+    object-fit: contain;
   }
   .detail-section {
     padding: 12px 0 0px;
@@ -1368,7 +1440,7 @@
 }
 
 
-// 关联层四列两行，事实层三列，时间筛选单独占一行。
+// 关联层四列两行，事实层使用三个可向左展开的工具入口。
 .map-controls.map-controls-fact,
 .map-controls.map-controls-relation {
   flex-direction: column;
@@ -1379,9 +1451,7 @@
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
-  .fact-controls-row,
-  .map-controls-row,
-  .fact-controls-time {
+  .map-controls-row {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -1398,15 +1468,110 @@
       box-shadow: var(--eco-shadow);
     }
   }
-  .fact-controls-row, .map-controls-row { flex-wrap: wrap; }
-  .fact-controls-time .ant-segmented-group { flex-wrap: wrap; }
+  .map-controls-row { flex-wrap: nowrap; }
   .map-search-panel { right: 0; left: auto; max-width: calc(100vw - 32px); }
 }
 
-.map-controls.map-controls-fact .fact-controls-row {
-  display: grid;
-  grid-template-columns: repeat(3, 32px);
-  justify-content: end;
+.map-controls.map-controls-fact {
+  .fact-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fact-tool-trigger,
+  .fact-tool-panel {
+    border: 1px solid rgba(86, 138, 194, 0.28);
+    background: rgba(10, 27, 57, 0.9);
+    backdrop-filter: blur(16px);
+    .theme-light & {
+      background: var(--eco-panel);
+      border-color: var(--eco-border);
+      box-shadow: var(--eco-shadow);
+    }
+  }
+
+  .fact-tool-trigger.ant-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    font-size: 17px;
+    &:hover, &:focus-visible, &[aria-expanded="true"] {
+      background: rgba(10, 27, 57, 0.9);
+      .theme-light & { background: var(--eco-panel); }
+    }
+  }
+
+  .fact-tool-group { position: relative; }
+  .fact-tool-panel {
+    position: absolute;
+    right: calc(100% + 10px);
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: max-content;
+    padding: 4px;
+    border-radius: 14px;
+    opacity: 0;
+    transform: translateX(14px);
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 220ms ease;
+    // 连通入口和面板的悬停区域，鼠标穿过间隙时保持展开。
+    &::after {
+      content: "";
+      position: absolute;
+      left: 100%;
+      top: 0;
+      width: 12px;
+      height: 100%;
+    }
+  }
+  .fact-tool-group.is-open > .fact-tool-panel {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  .fact-time-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    width: 192px;
+    .ant-radio-button-wrapper {
+      padding-inline: 8px;
+      text-align: center;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: inherit;
+      box-shadow: none;
+      &::before { display: none; }
+      &.ant-radio-button-wrapper-checked {
+        color: var(--interaction-accent);
+        background: color-mix(in srgb, var(--interaction-accent) 12%, transparent);
+        font-weight: 500;
+        box-shadow: none;
+      }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fact-tool-panel { transition: none; }
+  }
+}
+
+// 搜索沿按钮左侧的空白区域展开，避免盖住同排工具或上一排按钮。
+.map-controls.map-controls-relation .map-search-panel,
+.map-controls.map-controls-fact .map-search-panel {
+  right: calc(100% + 12px);
+  bottom: 50%;
+  width: min(320px, calc(100vw - 224px));
+  max-width: none;
+  transform-origin: right center;
+  transform: translate(12px, 50%) scaleX(0.96);
+
+  &.is-open {
+    transform: translate(0, 50%) scaleX(1);
+  }
 }
 
 .dashboard {

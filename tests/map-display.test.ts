@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { ScatterplotLayer } from "@deck.gl/layers";
-import { mergeChinaBoundaries, getMapPointScale } from "../src/utils/map";
-import { applyFactPointLayout, createMapLayers, FACT_POINT_RADIUS } from "../src/utils/mapLayers";
+import { mergeChinaBoundaries, getMapPointScale, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "../src/utils/map";
+import { applyFactPointLayout, createMapLayers } from "../src/utils/mapLayers";
 import type { Boundaries, MapLevel } from "../src/types";
 import { describe, expect, it } from "vitest";
 import { layoutFactPoints } from "../src/utils/factPointLayout";
@@ -63,9 +63,12 @@ describe("事实点位展开与球面遮挡", () => {
       const layers = base(level);
       const spread = factLayer(applyFactPointLayout(layers, layout, getMapPointScale(level), false));
       // 半径是常量，不因点位、是否被展开而分档。
-      expect(spread.props.getRadius).toBe(FACT_POINT_RADIUS);
+      expect(spread.props.getRadius).toBe(MAP_POINT_RADIUS);
       expect(spread.props.getRadius).toBe(factLayer(layers).props.getRadius);
       expect(spread.props.radiusScale).toBe(getMapPointScale(level));
+      // 描边也不分选中与否：统一 1px #999。
+      expect(spread.props.getLineWidth).toBe(1);
+      expect(spread.props.getLineColor).toEqual(MAP_POINT_LINE_COLOR);
       const [a, b] = points;
       expect(spread.props.getPosition(b)).toEqual(layout.get(b));
       expect(spread.props.getPosition(a)).toEqual(layout.get(a));

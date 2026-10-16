@@ -73,7 +73,6 @@ export function useMapLayers({
     highlightedEntityId,
     relationGlow,
     select,
-    selection,
   } = useDashboardStore(
     useShallow((s) => ({
       mode: s.mode,
@@ -84,7 +83,6 @@ export function useMapLayers({
       highlightedEntityId: s.highlightedEntityId,
       relationGlow: s.relationGlow,
       select: s.select,
-      selection: s.selection,
     })),
   );
   const pointScale = getMapPointScale(level, isGlobe);
@@ -158,7 +156,6 @@ export function useMapLayers({
         china: china,
         points,
         glowingFactIds,
-        selectedFactId: selection?.kind === "fact" ? selection.id : undefined,
         flatWorld,
         level,
         regionId,
@@ -184,7 +181,6 @@ export function useMapLayers({
       china,
       points,
       glowingFactIds,
-      selection,
       flatWorld,
       isGlobe,
       level,
@@ -277,7 +273,6 @@ export function useMapLayers({
             latitude: 0,
             highlightedEntityId,
             focusEntityIds,
-            glowingEntityIds: relationGlow.entityIds,
             glowingRelationIds: relationGlow.relationIds,
             width,
             height,

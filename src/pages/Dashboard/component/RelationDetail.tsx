@@ -6,6 +6,7 @@ import { evidenceStatusLabels } from "@/utils/factFilters";
 import { formatDate } from "@/utils/date";
 import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
+import RecordMedia from "@/components/RecordMedia";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
 import TypeFieldsSection from "./TypeFieldsSection";
 
@@ -36,6 +37,12 @@ const RelationDetail = ({ id, catalogs }: IProps) => {
             {target.canonicalName}
           </>
         }
+      />
+      <RecordMedia
+        images={relation.imageArr}
+        videos={relation.videoArr}
+        alt="关系图片"
+        variant="detail"
       />
       <DetailSection title="关系概览">
         <DetailRows

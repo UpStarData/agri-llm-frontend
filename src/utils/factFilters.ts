@@ -1,4 +1,4 @@
-import type { ApiFact, FactTaxonomyGroup } from "@/api/fact";
+import type { FactTaxonomyGroup } from "@/api/fact";
 import type { CommodityItem } from "@/api/commodity";
 
 const provinceSuffixes: Record<string, string> = {
@@ -24,20 +24,6 @@ export const evidenceStatusLabels: Record<string, string> = {
 export const provinceApiCode = (provinceId: string) => {
   const suffix = provinceSuffixes[provinceId.slice(0, 2)];
   return suffix ? `CN-${suffix}` : undefined;
-};
-
-export const matchesFactFilters = (
-  fact: ApiFact,
-  countryId: string,
-  provinceId: string,
-) => {
-  const path = fact.geo?.regionPath ?? [];
-  if (countryId === "CN" && !path.some((part) => part.code === "CHN" || part.code === "CN")) return false;
-  if (provinceId) {
-    const code = provinceApiCode(provinceId);
-    if (!code || !path.some((part) => part.code === code)) return false;
-  }
-  return true;
 };
 
 /**

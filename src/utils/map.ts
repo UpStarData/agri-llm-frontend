@@ -272,7 +272,17 @@ export function getRegionView(
   };
 }
 
+/**
+ * 地图点位半径（px），事实点与关联层本体点共用同一个值。
+ * 同一区域层级下所有点尺寸一致（选中、枢纽、是否被展开都不改变半径），
+ * 跨层级的大小差异只由 radiusScale(getMapPointScale) 提供。
+ */
+export const MAP_POINT_RADIUS = 5;
+
 /** 区域越聚焦，事实和本体标记越大；球体仍采用全球尺寸。 */
 export function getMapPointScale(level: string, isGlobe = false): number {
   return isGlobe || level === "world" ? 0.7 : level === "province" ? 1.35 : 1;
 }
+
+/** 点位描边色 #999：事实点与本体点统一，不随主题变化。 */
+export const MAP_POINT_LINE_COLOR: [number, number, number, number] = [153, 153, 153, 255];

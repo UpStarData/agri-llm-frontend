@@ -10,7 +10,7 @@ import {
 import type { Layer } from "@deck.gl/core";
 import type { FactPoint } from "../api/fact";
 import { impactCircle, distanceKm } from "./impact";
-import { flattenWorldPosition, getMapPointScale } from "./map";
+import { flattenWorldPosition, getMapPointScale, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "./map";
 import type {
   Boundaries,
   ColorTheme,
@@ -21,12 +21,6 @@ import type {
   Selection,
   Position,
 } from "../types";
-
-/**
- * 事实星点半径（px）。同一区域层级下所有事实点共用这一个值：
- * 重叠展开只改位置，不改半径；跨层级的大小差异由 radiusScale(getMapPointScale) 提供。
- */
-export const FACT_POINT_RADIUS = 5;
 
 const EMPTY: MapData = {
   datasetVersion: "",
@@ -86,7 +80,6 @@ export function createMapLayers({
   china,
   points = [],
   glowingFactIds = [],
-  selectedFactId,
   regionId,
   level,
   mode,
@@ -102,7 +95,6 @@ export function createMapLayers({
   china?: Boundaries;
   points?: FactPoint[];
   glowingFactIds?: string[];
-  selectedFactId?: string;
   regionId?: string;
   level: string;
   mode: Mode;
@@ -205,17 +197,17 @@ export function createMapLayers({
       visible: mode === "fact",
       pickable: true,
       getPosition: (d) => position(d.geoPoint),
-      getRadius: FACT_POINT_RADIUS,
+      getRadius: MAP_POINT_RADIUS,
       radiusScale: getMapPointScale(level),
       radiusUnits: "pixels",
       // 星点按 intensity 着色：热度低偏灰，缺省时保留白色主题色。
       getFillColor: (point: FactPoint) => glowing.has(point.factId) ? [255, 225, 100, 255] : factIntensityColor(point.intensity),
       transitions: { getFillColor: 450 },
       stroked: true,
-      getLineColor: [0, 0, 0, 255],
-      getLineWidth: (point) => point.factId === selectedFactId ? 2 : 1,
+      getLineColor: MAP_POINT_LINE_COLOR,
+      getLineWidth: 1,
       lineWidthUnits: "pixels",
-      updateTriggers: { getPosition: flatWorld, getFillColor: glowingFactIds, getLineWidth: [colorTheme, selectedFactId] },
+      updateTriggers: { getPosition: flatWorld, getFillColor: glowingFactIds },
       onClick: ({ object }) => {
         if (object) select({ kind: "fact", id: object.factId });
       },
@@ -416,7 +408,7 @@ export function createInfluenceLayers(
 
 /**
  * 把重叠事实的展开坐标写回事实点图层。
- * 只替换 getPosition：半径始终是 FACT_POINT_RADIUS，不会被展开与否影响；
+ * 只替换 getPosition：半径始终是 MAP_POINT_RADIUS，不会被展开与否影响；
  * 跨层级的整体大小差异由 radiusScale(pointScale) 统一提供。
  */
 export function applyFactPointLayout(

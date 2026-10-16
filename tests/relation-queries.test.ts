@@ -130,7 +130,10 @@ describe("关联层后端筛选", () => {
   it("全不选时仍请求后端并传空数组，业务错误 51 不作为列表数据展示", async () => {
     mocks.state.excludedFilterIds.relation = [categoryId];
     mocks.state.relationFilters.excludedTypes = [typeId, otherTypeId];
-    for (const query of queries()) await query.queryFn({ pageParam: 1 });
+    for (const query of queries()) {
+      expect(query.enabled).toBe(true);
+      await query.queryFn({ pageParam: 1 });
+    }
     for (const [request] of mocks.request.mock.calls)
       expect(request.data).toMatchObject({ categoryIds: [], relationTypeIds: [] });
     mocks.request.mockResolvedValue({ code: 51, message: "无效筛选", data: null });

@@ -1,9 +1,8 @@
-import { isLogisticsHub } from "./ecologyTheme";
 import { PathLayer, ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import type { ColorTheme, Entity, Relation, Position, Selection } from "@/types";
 import { relationColor, relationTypeInfo } from "./relationFilters";
-import { flattenWorldPosition } from "./map";
+import { flattenWorldPosition, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "./map";
 import type { RelationTypeCatalog } from "@/api/relation";
 
 interface IOptions {
@@ -18,7 +17,6 @@ interface IOptions {
   paths: Map<string, number[][]>;
   highlightedEntityId: string | null;
   focusEntityIds?: string[];
-  glowingEntityIds?: string[];
   glowingRelationIds?: string[];
   width?: number;
   height?: number;
@@ -104,7 +102,6 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
     paths,
     highlightedEntityId,
     focusEntityIds = [],
-    glowingEntityIds = [],
     glowingRelationIds = [],
     project,
     select,
@@ -242,23 +239,18 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
           next.every((node, index) => node === previous[index]),
         );
       },
-      updateTriggers: {
-        getPosition: flatWorld,
-        getFillColor: [colorTheme, highlightedEntityId, glowingEntityIds, relations],
-        getLineColor: [colorTheme, highlightedEntityId],
-        getRadius: [colorTheme, highlightedEntityId],
-        getLineWidth: [colorTheme, highlightedEntityId],
-      },
+      updateTriggers: { getPosition: flatWorld },
       pickable: true,
       getPosition: (e) => transform(e.position!),
-      getRadius: (e) => light ? (e.id === highlightedEntityId ? 9 : isLogisticsHub(e) ? 7 : 5) : 6,
+      // 所有本体点同一尺寸：选中、枢纽、主题都不改变半径。
+      getRadius: MAP_POINT_RADIUS,
       radiusUnits: "pixels",
       radiusScale: options.pointScale ?? 1,
       getFillColor: [255, 255, 255, 255],
       stroked: true,
-      getLineColor: [0, 0, 0, 255],
+      getLineColor: MAP_POINT_LINE_COLOR,
       lineWidthUnits: "pixels",
-      getLineWidth: (e) => e.id === highlightedEntityId ? 2 : 1,
+      getLineWidth: 1,
       onClick: ({ object }) => {
         if (object) select({ kind: "entity", id: object.id });
       },

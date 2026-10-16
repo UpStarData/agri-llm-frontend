@@ -23,12 +23,11 @@ vi.mock("@tanstack/react-query", () => ({
 vi.mock("../src/store", () => ({
   useDashboardStore: (selector: (state: unknown) => unknown) => selector(mocks.state),
 }));
-vi.mock("../src/api/request", () => ({ notifyRequestError: vi.fn() }));
+vi.mock("../src/api/request", () => ({ notifyRequestError: vi.fn(), request: vi.fn(async () => ({ data: { items: [], total: 0 } })) }));
 
-import { useFactList as runFactList } from "../src/hooks/useFactQueries";
+import { useFactList as runFactList, useFactPoints } from "../src/hooks/useFactQueries";
 import type { FactRequest } from "../src/api/fact";
 
-/** regionPath 必须带 CHN，否则国家条件本身就会把所有卡片过滤掉。 */
 const fact = (factId: string, provinceCode: string) => ({
   factId,
   geo: {
@@ -59,11 +58,11 @@ describe("事实列表占位数据", () => {
       isPlaceholderData: true,
       isError: false,
     };
-    const list = runFactList({} as FactRequest, true, "CN", "430000");
+    const list = runFactList({ view: "hunan", Province: "CN-HN" }, true);
     expect(factIds(list.data?.items)).toEqual(["a", "b"]);
   });
 
-  it("真实结果到达后仍按区域裁剪", () => {
+  it("真实结果到达后完整展示接口数据，不再按区域裁剪", () => {
     mocks.result = {
       data: { items: [fact("a", "CN-HN"), fact("b", "CN-GD")], total: 2 },
       isPending: false,
@@ -71,8 +70,8 @@ describe("事实列表占位数据", () => {
       isPlaceholderData: false,
       isError: false,
     };
-    const list = runFactList({} as FactRequest, true, "CN", "430000");
-    expect(factIds(list.data?.items)).toEqual(["a"]);
+    const list = runFactList({ view: "hunan", Province: "CN-HN" }, true);
+    expect(factIds(list.data?.items)).toEqual(["a", "b"]);
   });
 
   it("仅在查询启用时保留上一批数据", () => {
@@ -83,10 +82,32 @@ describe("事实列表占位数据", () => {
       isPlaceholderData: false,
       isError: false,
     };
-    runFactList({} as FactRequest, true, "", "");
+    runFactList({} as FactRequest, true);
     expect(typeof lastQueryOptions().placeholderData).toBe("function");
 
-    runFactList({} as FactRequest, false, "", "");
+    runFactList({} as FactRequest, false);
     expect(lastQueryOptions().placeholderData).toBeUndefined();
   });
+});
+
+
+it("全不选仍调用列表和地图接口，清空条件后不会被缓存新鲜期跳过", async () => {
+  const { request } = await import("../src/api/request");
+  vi.mocked(request).mockClear();
+  for (const params of [{ CategoryIds: [] }, {}]) {
+    runFactList(params);
+    useFactPoints(params);
+    for (const [options] of mocks.query.mock.calls.slice(-2)) {
+      const query = options as { enabled: boolean; staleTime: number; queryFn: () => Promise<unknown> };
+      expect(query.enabled).toBe(true);
+      expect(query.staleTime).toBe(0);
+      await query.queryFn();
+    }
+  }
+  expect(vi.mocked(request).mock.calls.map(([options]) => [options.url, options.data])).toEqual([
+    ["/facts", { categoryIds: [], page: 1, pageSize: 30 }],
+    ["/facts/points", { categoryIds: [] }],
+    ["/facts", { page: 1, pageSize: 30 }],
+    ["/facts/points", {}],
+  ]);
 });

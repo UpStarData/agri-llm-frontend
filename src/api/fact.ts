@@ -26,6 +26,10 @@ export interface ApiFact {
   occurredAt?: string;
   geo?: { regionPath?: { code?: string; name: string; level?: string }[]; geoPoint?: [number, number] | null };
   commodityIds?: string[];
+  /** 图片地址列表；null/缺省表示无图。 */
+  imageArr?: string[] | null;
+  /** 视频地址列表；null/缺省表示无视频。 */
+  videoArr?: string[] | null;
   entityCandidates?: { name: string }[];
   evidenceCount?: number;
   evidenceStatus?: string;

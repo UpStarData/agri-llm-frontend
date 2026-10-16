@@ -2,6 +2,7 @@ import { relationColor, relationDomainInfo } from "../src/utils/relationFilters"
 import { describe, expect, it } from "vitest";
 import { createMapLayers, createInfluenceLayers } from "../src/utils/mapLayers";
 import { createRelationLayers, createRelationFlowLayer, prepareRelationPaths } from "../src/utils/relationLayers";
+import { MAP_POINT_RADIUS } from "../src/utils/map";
 import type { Entity, Relation } from "../src/types";
 import { ECOLOGY_THEME as eco, rgb, rgba } from "../src/utils/ecologyTheme";
 
@@ -43,22 +44,19 @@ describe("生态亮色主题集成", () => {
     const particles = createRelationFlowLayer(layers, 0.25).props.data as { color: number[] }[];
     expect(particles[0].color).toEqual(edges[0].color);
   });
-  it("两种主题节点均为白色黑边，选中节点加粗描边", () => {
+  it("两种主题节点完全一致：统一半径、#999 细边，选中与枢纽都不改变尺寸", () => {
     const dark = createRelationLayers({ ...options, colorTheme: "dark" });
     const light = createRelationLayers({ ...options, colorTheme: "light", highlightedEntityId: "farm" });
     const node = light.find((layer) => layer.id === "real-entities")!;
     const old = dark.find((layer) => layer.id === "real-entities")!;
-    expect(node.props.updateTriggers!.getFillColor).not.toEqual(old.props.updateTriggers!.getFillColor);
-    expect(node.props.updateTriggers!.getRadius).not.toEqual(old.props.updateTriggers!.getRadius);
-    const width = node.props.getLineWidth as (entity: Entity) => number;
     for (const layer of [node, old]) {
+      expect(layer.props.getRadius).toBe(MAP_POINT_RADIUS);
       expect(layer.props.getFillColor).toEqual([255, 255, 255, 255]);
-      expect(layer.props.getLineColor).toEqual([0, 0, 0, 255]);
+      expect(layer.props.getLineColor).toEqual([153, 153, 153, 255]);
+      expect(layer.props.getLineWidth).toBe(1);
       expect(layer.props.stroked).toBe(true);
     }
-    expect(width(entities[0])).toBe(2);
-    expect(width(entities[1])).toBe(1);
-    expect(width(entities[2])).toBe(1);
+    expect(node.props.updateTriggers).toEqual(old.props.updateTriggers);
   });
   it("亮暗切换保留拾取回调和底图 ID，选中区域透明且触发器含主题", () => {
     const selections: string[] = [];

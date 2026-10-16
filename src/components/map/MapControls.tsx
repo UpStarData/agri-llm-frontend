@@ -1,9 +1,9 @@
 import { Button } from "antd";
 import {
-  ApartmentOutlined,
-  CompressOutlined,
+  DeploymentUnitOutlined,
+  FullscreenExitOutlined,
   EnvironmentOutlined,
-  ExpandOutlined,
+  FullscreenOutlined,
   GlobalOutlined,
   MinusOutlined,
   PlusOutlined,
@@ -36,13 +36,15 @@ const MapControls = ({
   if (mode === "fact") return (
     <div className="map-controls map-controls-fact" aria-label="地图操作">
       <FactMapTools
-        navigation={<>
+        zoom={<>
           <Tooltip title="放大"><Button type="text" shape="circle" icon={<PlusOutlined />} aria-label="放大地图" onClick={() => onZoom(1)} /></Tooltip>
           <Tooltip title="缩小"><Button type="text" shape="circle" icon={<MinusOutlined />} aria-label="缩小地图" onClick={() => onZoom(-1)} /></Tooltip>
+        </>}
+        views={<>
           <Tooltip title="3D 地图"><Button type={isGlobe ? "primary" : "text"} shape="circle" icon={<GlobalOutlined />} aria-label="3D 地图" aria-pressed={isGlobe} onClick={() => onViewChange("3d")} /></Tooltip>
           <Tooltip title="2D 地图"><Button type={!isGlobe ? "primary" : "text"} shape="circle" icon={<EnvironmentOutlined />} aria-label="2D 地图" aria-pressed={!isGlobe} onClick={() => onViewChange("2d")} /></Tooltip>
         </>}
-        fullscreen={<Tooltip title={isFullscreen ? "退出全屏" : "全屏"}><Button type="text" shape="circle" icon={isFullscreen ? <CompressOutlined /> : <ExpandOutlined />} aria-label={isFullscreen ? "退出全屏" : "展开全屏"} onClick={onFullscreen} /></Tooltip>}
+        fullscreen={<Tooltip title={isFullscreen ? "退出全屏" : "全屏"}><Button type="text" shape="circle" icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} aria-label={isFullscreen ? "退出全屏" : "展开全屏"} onClick={onFullscreen} /></Tooltip>}
       />
     </div>
   );
@@ -55,9 +57,10 @@ const MapControls = ({
         <Tooltip title="2D 地图"><Button type="text" shape="circle" icon={<EnvironmentOutlined />} aria-label="2D 地图" aria-pressed={!isGraph && !isGlobe} onClick={() => onViewChange("2d")} /></Tooltip>
       </div>
       <div className="map-controls-row">
-        <Tooltip title="图谱"><Button type="text" shape="circle" icon={<ApartmentOutlined />} aria-label="图谱" aria-pressed={isGraph} onClick={() => onViewChange("graph")} /></Tooltip>
-        <RelationMapTools />
-        <Tooltip title={isFullscreen ? "退出全屏" : "全屏"}><Button type="text" shape="circle" icon={isFullscreen ? <CompressOutlined /> : <ExpandOutlined />} aria-label={isFullscreen ? "退出全屏" : "展开全屏"} onClick={onFullscreen} /></Tooltip>
+        <RelationMapTools
+          graph={<Tooltip title="图谱"><Button type="text" shape="circle" icon={<DeploymentUnitOutlined />} aria-label="图谱" aria-pressed={isGraph} onClick={() => onViewChange("graph")} /></Tooltip>}
+        />
+        <Tooltip title={isFullscreen ? "退出全屏" : "全屏"}><Button type="text" shape="circle" icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} aria-label={isFullscreen ? "退出全屏" : "展开全屏"} onClick={onFullscreen} /></Tooltip>
       </div>
     </div>
   );

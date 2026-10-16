@@ -1,5 +1,6 @@
 import { Button, Empty, Spin } from "antd";
 import { useFactDetail } from "@/hooks";
+import RecordMedia from "@/components/RecordMedia";
 import { useDashboardStore } from "@/store";
 import { formatDate } from "@/utils/date";
 import type { Entity } from "@/types";
@@ -33,6 +34,12 @@ const FactDetail = ({ id }: IProps) => {
   return (
     <>
       <DetailIntro id={fact.factId} label="事实 ID" title={fact.title} />
+      <RecordMedia
+        images={fact.imageArr}
+        videos={fact.videoArr}
+        alt="事实图片"
+        variant="detail"
+      />
       <DetailSection title="事实摘要">
         <p className="detail-paragraph">{fact.summary || "暂无摘要"}</p>
       </DetailSection>

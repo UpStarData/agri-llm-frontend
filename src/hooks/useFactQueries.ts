@@ -10,7 +10,6 @@ import {
 import type { FactPage, FactRequest, GeoPointsRequest } from "@/api/fact";
 import { useDashboardStore } from "@/store";
 import { notifyRequestError } from "@/api/request";
-import { matchesFactFilters } from "@/utils/factFilters";
 
 const FACT_PAGE_SIZE = 30;
 
@@ -28,8 +27,6 @@ export function useFactTaxonomy() {
 export function useFactList(
   params: FactRequest,
   active = true,
-  countryId = "",
-  provinceId = "",
 ) {
   const mode = useDashboardStore((s) => s.mode);
   const queryClient = useQueryClient();
@@ -58,6 +55,7 @@ export function useFactList(
         })
       ).data,
     enabled: mode === "fact" && active,
+    staleTime: 0,
     // 新筛选结果到达前保留上一批卡片，列表不会先闪成加载态再重排。
     placeholderData:
       mode === "fact" && active ? keepPreviousData : undefined,
@@ -106,19 +104,7 @@ export function useFactList(
     ...query,
     scope,
     isPending: active && query.isPending,
-    data:
-      active && query.data
-        ? {
-            ...query.data,
-            // 占位数据仍属上一组区域条件，再按新区域裁剪会整列表清空；
-            // 原样保留，等新结果落地后由下面的过滤接手。
-            items: query.isPlaceholderData
-              ? query.data.items
-              : query.data.items.filter((fact) =>
-                  matchesFactFilters(fact, countryId, provinceId),
-                ),
-          }
-        : undefined,
+    data: active ? query.data : undefined,
     hasNextPage,
     isFetchingNextPage: pageLoading.scope === scope && pageLoading.loading,
     loadMoreError: pageError.scope === scope && pageError.failed,
@@ -133,6 +119,7 @@ export function useFactPoints(params: FactRequest, active = true) {
     queryKey: ["fact", "points", params],
     queryFn: async () => (await getFactPoints(params)).data.items,
     enabled,
+    staleTime: 0,
     // 筛选/搜索切换时保留上一批星点，地图只做增删而不是整层消失再重绘。
     placeholderData: enabled ? keepPreviousData : undefined,
     meta: { notifyOnError: true },

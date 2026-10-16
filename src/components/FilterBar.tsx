@@ -1,5 +1,5 @@
 import { useShallow } from "zustand/react/shallow";
-import { Segmented, Select } from "antd";
+import { Radio, Select } from "antd";
 import { areaList } from "@vant/area-data";
 import { useDashboardStore } from "@/store";
 import dayjs, { DISPLAY_TIMEZONE } from "@/utils/date";
@@ -60,24 +60,27 @@ export const FactTimeFilter = () => {
   })));
   const today = dayjs().tz(DISPLAY_TIMEZONE);
   return (
-    <Segmented
-      className="fact-time-segmented"
+    <Radio.Group
+      className="fact-time-options"
+      optionType="button"
+      size="small"
       aria-label="事实时间范围"
-      value={[1, 7, 30, 180, 365].find(
+      value={dates === null ? "all" : [1, 7, 30, 180, 365].find(
         (days) =>
-          dates[1] === today.format("YYYY-MM-DD") &&
+          dates?.[1] === today.format("YYYY-MM-DD") &&
           dates[0] === today.subtract(days - 1, "day").format("YYYY-MM-DD"),
       )}
       options={[
+        { value: "all", label: "全部", title: "全部时间" },
         { value: 1, label: "当天" },
         { value: 7, label: "近7天" },
         { value: 30, label: "近1月" },
         { value: 180, label: "半年" },
         { value: 365, label: "一年" },
       ]}
-      onChange={(days) =>
-        setDateRange([
-          today.subtract(Number(days) - 1, "day").format("YYYY-MM-DD"),
+      onChange={(event) =>
+        setDateRange(event.target.value === "all" ? null : [
+          today.subtract(Number(event.target.value) - 1, "day").format("YYYY-MM-DD"),
           today.format("YYYY-MM-DD"),
         ])
       }

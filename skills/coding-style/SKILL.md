@@ -84,3 +84,23 @@ src/pages/SomePage/
 ## 11. Less 样式组织
 
 Less 样式按模块集中组织；同一作用域的选择器统一声明，子元素、伪类及状态使用嵌套。主题和响应式规则就近维护，避免跨模块合并无关选择器。
+
+## 12. 列表/卡片数据加工
+
+- 加工放在数据来源处一次算完：列表页在 `records`（`pages.flatMap(...)` 之后）算，或直接写在接口返回处理处，**不要在 `map` 渲染循环里逐条现算**
+- 渲染循环里只做摆放：能原样渲染的字段直接用接口字段（`{card.canonicalName}`），不要写 `const name = entity.canonicalName` 再中转一层
+- 需要拼接/查表得到的展示文案（位置链、品种名、视角文案、要截断的字段列表）在加工处算成字段，渲染时直接引用
+- 加工用纯函数完成，返回 `{ ...entity, 加工字段 }`，接口原字段名保持不变；只服务本卡片就放在该组件文件里，多个列表复用或要单独写单测时抽到 `utils`（组件文件里导出非组件会触发 `react(only-export-components)`）
+
+```tsx
+const records = (list.data?.pages.flatMap(({ items }) => items) ?? []).map(
+  (entity) => entityCard(entity, commodities.data),
+);
+
+{column.map((card) => (
+  <div key={card.entityId}>
+    <strong>{card.canonicalName}</strong>
+    {card.meta && <div className="record-meta">{card.meta}</div>}
+  </div>
+))}
+```

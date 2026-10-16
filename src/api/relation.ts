@@ -52,6 +52,10 @@ export interface EntityListItem {
     viewLevels?: FactView[] | null;
   } | null;
   commodityIds?: string[];
+  /** 图片地址列表；null/缺省表示无图。 */
+  imageArr?: string[] | null;
+  /** 视频地址列表；null/缺省表示无视频。 */
+  videoArr?: string[] | null;
   typeFields?: { label: string; value: string | number | null }[] | null;
   summary?: string;
   relationCount?: number | null;
@@ -180,6 +184,10 @@ export interface RelationDetailResponse {
   directed?: boolean;
   colorDomain?: string;
   typeFields?: DetailTypeField[] | null;
+  /** 图片地址列表；null/缺省表示无图。 */
+  imageArr?: string[] | null;
+  /** 视频地址列表；null/缺省表示无视频。 */
+  videoArr?: string[] | null;
   evidenceStatus?: string;
   sourceType?: "fact" | "preset";
   supportFacts?:
@@ -225,6 +233,10 @@ export interface EntityDetailResponse {
   typeFields?: DetailTypeField[] | null;
   summary?: string | null;
   media?: unknown[] | null;
+  /** 图片地址列表；null/缺省表示无图。 */
+  imageArr?: string[] | null;
+  /** 视频地址列表；null/缺省表示无视频。 */
+  videoArr?: string[] | null;
   evidenceStatus?: "multi_source" | "single_source" | "pending" | "conflict";
   sourceType?: "fact" | "preset";
   presetRef?: string | null;

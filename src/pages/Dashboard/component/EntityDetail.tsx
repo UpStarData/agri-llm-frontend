@@ -6,6 +6,7 @@ import { evidenceStatusLabels } from "@/utils/factFilters";
 import { formatDate } from "@/utils/date";
 import EvidenceFacts from "./EvidenceFacts";
 import { DetailIntro, DetailRows, DetailSection } from "./DetailLayout";
+import RecordMedia from "@/components/RecordMedia";
 import { entityCategoryName, relationTypeInfo } from "@/utils/relationFilters";
 import TypeFieldsSection from "./TypeFieldsSection";
 
@@ -30,6 +31,12 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
   return (
     <>
       <DetailIntro id={entity.entityId} label="本体 ID" title={entity.canonicalName} />
+      <RecordMedia
+        images={entity.imageArr}
+        videos={entity.videoArr}
+        alt="本体图片"
+        variant="detail"
+      />
       <DetailSection title="分类与位置">
         <DetailRows
           items={[
@@ -73,11 +80,6 @@ const EntityDetail = ({ id, catalogs }: IProps) => {
         </DetailSection>
       )}
       <TypeFieldsSection fields={entity.typeFields} />
-      {Boolean(entity.media?.length) && (
-        <DetailSection title="媒体">
-          <p className="detail-empty">媒体展示待接入</p>
-        </DetailSection>
-      )}
       <DetailSection title="证据状态">
         <DetailRows
           items={[

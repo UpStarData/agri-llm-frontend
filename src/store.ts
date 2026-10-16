@@ -57,7 +57,7 @@ interface DashboardState {
   backDetail: () => void;
   level: MapLevel;
   regionId?: string;
-  dateRange: [string, string];
+  dateRange: [string, string] | null;
   selection: Selection | null;
   detailsOpen: boolean;
   colorTheme: ColorTheme;
@@ -73,7 +73,7 @@ interface DashboardState {
   togglePanel: (side: DrawerSide) => void;
   setMode: (mode: Mode) => void;
   setRegion: (level: MapLevel, regionId?: string) => void;
-  setDateRange: (range: [string, string]) => void;
+  setDateRange: (range: [string, string] | null) => void;
   select: (selection: Selection | null) => void;
   setDetailsOpen: (open: boolean) => void;
   setColorTheme: (theme: ColorTheme) => void;

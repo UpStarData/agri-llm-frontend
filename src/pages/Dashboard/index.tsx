@@ -62,11 +62,11 @@ const Dashboard = () => {
   const today = dayjs().tz(DISPLAY_TIMEZONE);
   const days = [1, 7, 30, 180, 365].find(
     (count) =>
-      dates[1] === today.format("YYYY-MM-DD") &&
+      dates?.[1] === today.format("YYYY-MM-DD") &&
       dates[0] === today.subtract(count - 1, "day").format("YYYY-MM-DD"),
   );
   const sharedParams = {
-    TimeRange: days === undefined ? undefined : ({
+    TimeRange: dates === null ? TimeRange.All : days === undefined ? undefined : ({
       1: TimeRange.Today,
       7: TimeRange.The7D,
       30: TimeRange.The30D,
@@ -81,9 +81,6 @@ const Dashboard = () => {
     Q: keyword || undefined,
     CardTypes: videoOnly ? CardTypes.Video : undefined,
   };
-  const noCategories =
-    excluded.length > 0 && !!taxonomyQuery.data && keptCategoryIds.length === 0;
-  const factsActive = !noCategories;
   // 地图星点跟地图取景走：点击中国/省份/回到全球只影响地图上展示的那一批点位。
   const mapProvinceId = level === "province" ? regionId ?? "" : "";
   const mapParams = {
@@ -91,8 +88,8 @@ const Dashboard = () => {
     view: getRegionFactView(level, regionId),
     Province: provinceApiCode(mapProvinceId),
   };
-  const factPoints = useFactPoints(mapParams, factsActive);
-  const factLive = useFactLive(mapParams, mode === "fact" && factsActive);
+  const factPoints = useFactPoints(mapParams);
+  const factLive = useFactLive(mapParams, mode === "fact");
   // 右侧卡片跟左侧区域筛选走，与地图取景无关，切换视角时列表保持原样。
   const factList = useFactList(
     {
@@ -100,9 +97,6 @@ const Dashboard = () => {
       view: getFactView(countryId, provinceId),
       Province: provinceId ? provinceApiCode(provinceId) : undefined,
     },
-    factsActive,
-    countryId,
-    provinceId,
   );
   const relationCatalogs = useRelationCatalogs();
   const relationQueries = useRelationQueries(
@@ -139,7 +133,7 @@ const Dashboard = () => {
           }
         >
           <MapCanvas
-            points={factsActive ? factPoints.data : undefined}
+            points={factPoints.data}
             glowingFactIds={factLive.ids}
             data={mode === "relation" ? relationMap : undefined}
             graphData={relationGraph}
@@ -152,8 +146,7 @@ const Dashboard = () => {
               relationQueries.map.isPlaceholderData
             }
             factsPending={
-              factsActive &&
-              (factPoints.isPending || factPoints.isPlaceholderData)
+              factPoints.isPending || factPoints.isPlaceholderData
             }
           />
         </Suspense>
