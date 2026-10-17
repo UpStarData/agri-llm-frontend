@@ -36,16 +36,21 @@ export const useFactIntensityAnimation = (
     }
     if (!pending.current) return;
     pending.current = false;
-    const duration = points?.some((point) => (point.intensityArr?.length ?? 0) > 1)
+    const duration = points?.length
       ? FACT_INTENSITY_DURATION_SECONDS
       : 0;
     setPlayback({ points, timeKey, seconds: 0 });
     if (!duration) return;
     let frame = 0;
+    let lastUpdate = 0;
     const start = performance.now();
     const tick = (now: number) => {
       const seconds = Math.min(duration, (now - start) / 1000);
-      setPlayback({ points, timeKey, seconds });
+      // 对齐原型约 80ms 一批，也让 GPU 颜色过渡在两次更新间完成。
+      if (seconds === duration || seconds - lastUpdate >= 0.08) {
+        lastUpdate = seconds;
+        setPlayback({ points, timeKey, seconds });
+      }
       if (seconds < duration) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);

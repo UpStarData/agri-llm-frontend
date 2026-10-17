@@ -12,7 +12,7 @@ import { useMapLayers } from "@/hooks/useMapLayers";
 import { useMapCamera } from "@/hooks/useMapCamera";
 import { useSize } from "ahooks";
 import { useBoundaries, useFactGeoPoints } from "@/hooks";
-import type { FactPoint, GeoPoint, GeoPointKind, GeoPointsRequest } from "@/api/fact";
+import type { FactTaxonomyGroup, FactPoint, GeoPoint, GeoPointKind, GeoPointsRequest } from "@/api/fact";
 import {
   getGlobeZoomLimits,
   MAP_ZOOM_STEP,
@@ -27,7 +27,7 @@ import { geoPointKindAvailable } from "@/utils/geoPointKinds";
 import GlobeBackdrop from "./GlobeBackdrop";
 import GeoPointInfoCard from "./GeoPointInfoCard";
 import type { MapData } from "@/types";
-import type { RelationTypeCatalog } from "@/api/relation";
+import type { EntityCategoryCatalog, RelationTypeCatalog } from "@/api/relation";
 import { getMapTooltip } from "@/utils/mapTooltip";
 
 const repeatingFlatView = new MapView({ id: "main-map", repeat: true });
@@ -53,12 +53,14 @@ interface IProps {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
   graphData?: Pick<MapData, "entities" | "relations">;
   points?: FactPoint[];
+  factGroups?: FactTaxonomyGroup[];
   glowingFactIds?: string[];
   factsPending: boolean;
   factsFetching?: boolean;
   relationsPending?: boolean;
   focusEntityIds?: string[];
   relationTypes?: RelationTypeCatalog;
+  entityCategories?: EntityCategoryCatalog;
 }
 
 const MapCanvas = ({
@@ -66,11 +68,13 @@ const MapCanvas = ({
   graphData,
   points,
   glowingFactIds,
+  factGroups,
   factsPending,
   factsFetching,
   relationsPending,
   focusEntityIds,
   relationTypes,
+  entityCategories,
 }: IProps) => {
   const container = useRef<HTMLDivElement>(null);
   const size = useSize(container);
@@ -189,6 +193,7 @@ const MapCanvas = ({
   const layers = useMapLayers({
     data,
     points,
+    factGroups,
     factsPending,
     factsFetching,
   glowingFactIds,
@@ -203,6 +208,7 @@ const MapCanvas = ({
     flatWorld,
     paused: isGraph,
     relationTypes,
+    entityCategories,
     focusEntityIds,
     setIsGlobe,
     changeRegion,

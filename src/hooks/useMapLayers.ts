@@ -9,11 +9,13 @@ import { IconLayer } from "@deck.gl/layers";
 import { useDashboardStore } from "@/store";
 import { useFactIntensityAnimation } from "./useFactIntensityAnimation";
 import type { Boundaries, MapData } from "@/types";
-import type { FactPoint, GeoPoint } from "@/api/fact";
-import type { RelationTypeCatalog } from "@/api/relation";
+import type { FactTaxonomyGroup, FactPoint, GeoPoint } from "@/api/fact";
+import type { EntityCategoryCatalog, RelationTypeCatalog } from "@/api/relation";
 import { getMapPointScale, flattenWorldBoundaries, flattenWorldPosition } from "@/utils/map";
 import { getKmPerPixel } from "@/utils/impact";
 import { layoutFactPoints } from "@/utils/factPointLayout";
+import { factCategoryColors, entityCategoryColors } from "@/utils/ecologyTheme";
+import { factRevealDelays } from "@/utils/factIntensity";
 import { geoPointIcon, cachedSvgFetch } from "@/utils/geoPointIcons";
 import { createGlobeSurface } from "@/utils/globeSurface";
 import { createMapLayers, createInfluenceLayers, applyFactPointLayout, applyFactIntensity } from "@/utils/mapLayers";
@@ -30,6 +32,7 @@ const INFLUENCE_CYCLE_SECONDS = 3.6;
 interface Options {
   data?: Pick<MapData, "entities" | "relations" | "overlays">;
   points?: FactPoint[];
+  factGroups?: FactTaxonomyGroup[];
   factsPending: boolean;
   factsFetching?: boolean;
   glowingFactIds?: string[];
@@ -44,6 +47,7 @@ interface Options {
   flatWorld: boolean;
   paused: boolean;
   relationTypes?: RelationTypeCatalog;
+  entityCategories?: EntityCategoryCatalog;
   focusEntityIds?: string[];
   setIsGlobe: (value: boolean) => void;
   changeRegion: (countryId: string, provinceId?: string) => void;
@@ -53,6 +57,7 @@ interface Options {
 export function useMapLayers({
   data,
   points: sourcePoints,
+  factGroups,
   factsPending,
   factsFetching,
   glowingFactIds,
@@ -67,6 +72,7 @@ export function useMapLayers({
   flatWorld,
   paused,
   relationTypes,
+  entityCategories,
   focusEntityIds,
   setIsGlobe,
   changeRegion,
@@ -94,11 +100,14 @@ export function useMapLayers({
       select: s.select,
     })),
   );
+  const categoryColors = useMemo(() => factCategoryColors(factGroups ?? []), [factGroups]);
+  const entityColors = useMemo(() => entityCategoryColors(entityCategories), [entityCategories]);
   const pointScale = getMapPointScale(level, isGlobe);
   const { seconds: intensitySeconds, hidePoints } = useFactIntensityAnimation(
     sourcePoints, JSON.stringify(dateRange), !factsPending && !factsFetching, mode === "fact",
   );
   const points = hidePoints ? undefined : sourcePoints;
+  const revealDelays = useMemo(() => factRevealDelays(sourcePoints ?? []), [sourcePoints]);
   const [animationSeconds, setAnimationSeconds] = useState(0);
   const influencePhase = (animationSeconds / INFLUENCE_CYCLE_SECONDS) % 1;
   // 影响圆的采样密度按当前视图比例换算，屏幕上的圆有多大就切多少段。
@@ -168,6 +177,7 @@ export function useMapLayers({
         world: flatWorldBoundaries,
         china: china,
         points,
+        categoryColors,
         glowingFactIds,
         flatWorld,
         level,
@@ -193,6 +203,7 @@ export function useMapLayers({
       flatWorldBoundaries,
       china,
       points,
+      categoryColors,
       glowingFactIds,
       flatWorld,
       isGlobe,
@@ -292,6 +303,7 @@ export function useMapLayers({
             project: relationViewport ? (position) => relationViewport.project(position) : undefined,
             select: isGlobe ? () => { setIsGlobe(false); changeRegion(""); } : select,
             relationTypes,
+            categoryColors: entityColors,
             colorTheme,
           })
         : [],
@@ -310,6 +322,7 @@ export function useMapLayers({
       relationViewport,
       select,
       relationTypes,
+      entityColors,
       colorTheme,
       setIsGlobe,
       changeRegion,
@@ -375,8 +388,8 @@ export function useMapLayers({
   const animatedBaseLayers = useMemo(
     () => intensitySeconds === undefined
       ? renderedBaseLayers
-      : applyFactIntensity(renderedBaseLayers, intensitySeconds),
-    [renderedBaseLayers, intensitySeconds],
+      : applyFactIntensity(renderedBaseLayers, intensitySeconds, revealDelays),
+    [renderedBaseLayers, intensitySeconds, revealDelays],
   );
   return [
     oceanLayer,

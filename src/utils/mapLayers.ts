@@ -9,9 +9,9 @@ import {
 } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import type { FactPoint } from "../api/fact";
-import { factIntensityAt } from "./factIntensity";
+import { factIntensityAt, factRevealAlpha, factRevealDelays } from "./factIntensity";
 import { impactCircle, distanceKm } from "./impact";
-import { flattenWorldPosition, getMapPointScale, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "./map";
+import { flattenWorldPosition, getMapPointScale, FACT_POINT_RADIUS } from "./map";
 import type {
   Boundaries,
   ColorTheme,
@@ -80,6 +80,7 @@ export function createMapLayers({
   world,
   china,
   points = [],
+  categoryColors,
   glowingFactIds = [],
   regionId,
   level,
@@ -95,6 +96,7 @@ export function createMapLayers({
   world?: Boundaries;
   china?: Boundaries;
   points?: FactPoint[];
+  categoryColors?: Map<string, RGB>;
   glowingFactIds?: string[];
   regionId?: string;
   level: string;
@@ -185,12 +187,9 @@ export function createMapLayers({
       getRadius: (point) => glowing.has(point.factId) ? 16 : 0,
       radiusUnits: "pixels",
       getFillColor: colorTheme === "light" ? [255, 160, 20, 70] : [255, 218, 90, 85],
-      stroked: true,
-      getLineColor: [255, 190, 50, 210],
-      getLineWidth: (point) => glowing.has(point.factId) ? 2 : 0,
-      lineWidthUnits: "pixels",
+      stroked: false,
       transitions: { getRadius: 450 },
-      updateTriggers: { getPosition: flatWorld, getRadius: glowingFactIds, getLineWidth: glowingFactIds },
+      updateTriggers: { getPosition: flatWorld, getRadius: glowingFactIds },
     }),
     new ScatterplotLayer<FactPoint>({
       id: "real-facts",
@@ -198,17 +197,14 @@ export function createMapLayers({
       visible: mode === "fact",
       pickable: true,
       getPosition: (d) => position(d.geoPoint),
-      getRadius: MAP_POINT_RADIUS,
+      getRadius: FACT_POINT_RADIUS,
       radiusScale: getMapPointScale(level),
       radiusUnits: "pixels",
-      // 星点按 intensity 着色：热度低偏灰，缺省时保留白色主题色。
-      getFillColor: (point: FactPoint) => glowing.has(point.factId) ? [255, 225, 100, 255] : factIntensityColor(point.intensity),
+      // 大类决定 RGB，热度只控制透明度；实时提示继续由光晕承载。
+      getFillColor: (point: FactPoint) => factIntensityColor(point.intensity, categoryColors?.get(point.categoryId ?? "")),
       transitions: { getFillColor: 450 },
-      stroked: true,
-      getLineColor: MAP_POINT_LINE_COLOR,
-      getLineWidth: 1,
-      lineWidthUnits: "pixels",
-      updateTriggers: { getPosition: flatWorld, getFillColor: glowingFactIds },
+      stroked: false,
+      updateTriggers: { getPosition: flatWorld, getFillColor: categoryColors },
       onClick: ({ object }) => {
         if (object) select({ kind: "fact", id: object.factId });
       },
@@ -407,42 +403,62 @@ export function createInfluenceLayers(
   return [...ripples, boundary];
 }
 
-/** 只更新星点展示，热度为 0 时隐藏；复用底图、位置和拾取数据。 */
-export const applyFactIntensity = (layers: ReturnType<typeof createMapLayers>, seconds: number) =>
-  layers.map((layer) => {
+/** 时间切换时逐批淡入星点，并叠加热度变化；复用底图、位置和拾取数据。 */
+export const applyFactIntensity = (
+  layers: ReturnType<typeof createMapLayers>,
+  seconds: number,
+  delays?: Map<string, number>,
+) => {
+  const points = layers.find((layer) => layer.id === "real-facts")?.props.data as FactPoint[] | undefined;
+  const revealDelays = delays ?? factRevealDelays(points ?? []);
+  const frames = new Map((points ?? []).map((point) => {
+    const intensity = factIntensityAt(point, seconds);
+    return [point, {
+      intensity,
+      // 热度只影响灰度，可见性仅由错峰淡入决定，避免零值平台让点集中跳出。
+      alpha: factRevealAlpha(seconds, revealDelays.get(point.factId) ?? 0),
+    }];
+  }));
+  const alpha = (point: FactPoint) => frames.get(point)?.alpha ??
+    factRevealAlpha(seconds, revealDelays.get(point.factId) ?? 0);
+  return layers.map((layer) => {
     if (layer.id !== "real-facts" && layer.id !== "live-fact-glow") return layer;
     const facts = layer as ScatterplotLayer<FactPoint>;
     const radius = facts.props.getRadius as number | ((point: FactPoint) => number);
-    const lineWidth = facts.props.getLineWidth as number | ((point: FactPoint) => number);
+    const fill = facts.props.getFillColor as RGB | [number, number, number, number] |
+      ((point: FactPoint) => RGB | [number, number, number, number]);
+    const fadeColor = (color: RGB | [number, number, number, number], point: FactPoint): [number, number, number, number] =>
+      [color[0], color[1], color[2], Math.round((color[3] ?? 255) * alpha(point))];
     const visibility = {
-      // 同时去掉半径和描边，避免留下灰色轮廓或可拾取的空点；不删除接口数据。
-      getRadius: (point: FactPoint) => factIntensityAt(point, seconds) === 0
+      // 尚未出现时半径为零，避免拾取到空点；不删除接口数据。
+      getRadius: (point: FactPoint) => alpha(point) === 0
         ? 0 : typeof radius === "function" ? radius(point) : radius,
-      getLineWidth: (point: FactPoint) => factIntensityAt(point, seconds) === 0
-        ? 0 : typeof lineWidth === "function" ? lineWidth(point) : lineWidth,
       updateTriggers: {
         ...facts.props.updateTriggers,
         getRadius: [facts.props.updateTriggers?.getRadius, seconds],
-        getLineWidth: [facts.props.updateTriggers?.getLineWidth, seconds],
       },
     };
     if (layer.id === "live-fact-glow") return facts.clone({
       ...visibility,
+      getFillColor: (point: FactPoint) => fadeColor(typeof fill === "function" ? fill(point) : fill, point),
       transitions: { ...facts.props.transitions, getRadius: 1 },
+      updateTriggers: { ...visibility.updateTriggers, getFillColor: [facts.props.updateTriggers?.getFillColor, seconds] },
     });
-    const fill = facts.props.getFillColor as (point: FactPoint) => RGB | [number, number, number, number];
     return facts.clone({
       ...visibility,
-      getFillColor: (point: FactPoint) => fill({ ...point, intensity: factIntensityAt(point, seconds) }),
+      getFillColor: (point: FactPoint) => fadeColor(typeof fill === "function"
+        ? fill({ ...point, intensity: frames.get(point)?.intensity ?? factIntensityAt(point, seconds) })
+        : fill, point),
       // 颜色已逐帧插值，仅保留 1ms GPU 过渡；直接改为 0 会移除旧过渡缓冲，导致星点不再绘制。
       transitions: { ...facts.props.transitions, getFillColor: 1 },
       updateTriggers: { ...visibility.updateTriggers, getFillColor: [facts.props.updateTriggers?.getFillColor, seconds] },
     });
   });
+};
 
 /**
  * 把重叠事实的展开坐标写回事实点图层。
- * 只替换 getPosition：半径始终是 MAP_POINT_RADIUS，不会被展开与否影响；
+ * 只替换 getPosition：半径始终是 FACT_POINT_RADIUS，不会被展开与否影响；
  * 跨层级的整体大小差异由 radiusScale(pointScale) 统一提供。
  */
 export function applyFactPointLayout(

@@ -124,11 +124,13 @@ const Dashboard = () => {
         >
           <MapCanvas
             points={factPoints.data}
+            factGroups={taxonomyQuery.data?.groups}
             factsFetching={factPoints.isFetching}
             glowingFactIds={factLive.ids}
             data={mode === "relation" ? relationMap : undefined}
             graphData={relationGraph}
             relationTypes={relationCatalogs.types.data}
+            entityCategories={relationCatalogs.categories.data}
             focusEntityIds={focusEntityIds}
             relationsPending={
               relationQueries.graph.isPending ||

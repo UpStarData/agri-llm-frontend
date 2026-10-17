@@ -109,7 +109,7 @@ describe("关联筛选与地图规则", () => {
       version: "RT-v1",
       types: [{ id: SUPPLIES_TYPE_ID, name: "供应", colorDomain: "production_supply",
         directed: true, sourceCategoryIds: [], targetCategoryIds: [] }],
-    })).toEqual([77, 150, 106]);
+    })).toEqual([255, 209, 102]);
   });
   it("直接显示后端筛选结果，保留跨区域外部端点及其真实层级", () => {
     const entities = nodes.map((node): Entity => ({

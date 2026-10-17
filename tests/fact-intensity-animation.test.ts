@@ -72,6 +72,54 @@ describe("仅时间筛选触发事实热度播放", () => {
     expect(frames.size).toBe(0);
   });
 
+  it("约每 80ms 更新一批，避免每帧重启 GPU 颜色过渡，结束帧准时落地", () => {
+    useRender(); hooks.effect!();
+    useRender(points, "30d"); hooks.effect!();
+    step(16); step(32); step(64);
+    expect(useRender(points, "30d").seconds).toBe(0);
+    step(80);
+    expect(useRender(points, "30d").seconds).toBe(0.08);
+    step(100);
+    expect(useRender(points, "30d").seconds).toBe(0.08);
+    step(3190); step(3200);
+    expect(useRender(points, "30d").seconds).toBe(3.2);
+    expect(frames.size).toBe(0);
+  });
+
+  it("快速再次切换后仅播放当前响应，恢复相同缓存引用也等待新请求结束", () => {
+    useRender(); hooks.effect!();
+    useRender(points, "30d", false); hooks.effect!();
+    const firstResponse = [...points];
+    useRender(firstResponse, "30d");
+    const cleanup = hooks.effect!();
+    step(400);
+    expect(useRender(firstResponse, "7d", false).hidePoints).toBe(true);
+    if (typeof cleanup === "function") cleanup();
+    hooks.effect!();
+    expect(frames.size).toBe(0);
+    // React Query 结构共享可复用 points；正在请求时不能播放缓存。
+    expect(useRender(points, "7d", false).hidePoints).toBe(true);
+    hooks.effect!();
+    expect(frames.size).toBe(0);
+    useRender(points, "7d", true); hooks.effect!();
+    expect(useRender(points, "7d")).toEqual({ hidePoints: false, seconds: 0 });
+    step(3200);
+    expect(useRender(points, "7d").seconds).toBe(3.2);
+    expect(frames.size).toBe(0);
+  });
+
+  it("接口没有热度数组时，时间切换仍播放逐批出现动画", () => {
+    const response = [{ factId: "plain", geoPoint: [112, 28] as [number, number], intensity: 75 }];
+    useRender(); hooks.effect!();
+    useRender(response, "30d"); hooks.effect!();
+    expect(frames.size).toBe(1);
+    step(1600);
+    expect(useRender(response, "30d").seconds).toBe(1.6);
+    step(3200);
+    expect(useRender(response, "30d").seconds).toBe(3.2);
+    expect(frames.size).toBe(0);
+  });
+
   it("再次切换时间或其他筛选到来时取消旧帧；其他筛选恢复普通展示", () => {
     useRender(); hooks.effect!();
     useRender(points, "30d");

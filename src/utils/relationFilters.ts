@@ -1,3 +1,4 @@
+import { ECOLOGY_THEME, rgb } from "./ecologyTheme";
 import type {
   EntityCategoryCatalog,
   RelationTypeCatalog,
@@ -7,12 +8,12 @@ export const relationDomainInfo: Record<
   string,
   { name: string; color: [number, number, number] }
 > = {
-  production_supply: { name: "生产供应", color: [77, 150, 106] },
-  business_org: { name: "经营组织", color: [207, 133, 74] },
-  spatial: { name: "空间", color: [84, 123, 170] },
-  logistics: { name: "物流", color: [36, 166, 161] },
-  policy: { name: "政策", color: [138, 109, 186] },
-  impact: { name: "影响", color: [202, 105, 117] },
+  production_supply: { name: "生产供应", color: rgb(ECOLOGY_THEME.categoryProduction) },
+  business_org: { name: "经营组织", color: rgb(ECOLOGY_THEME.categoryMarket) },
+  spatial: { name: "空间", color: rgb(ECOLOGY_THEME.categoryNature) },
+  logistics: { name: "物流", color: rgb(ECOLOGY_THEME.categoryLogistics) },
+  policy: { name: "政策", color: rgb(ECOLOGY_THEME.categoryPolicy) },
+  impact: { name: "影响", color: rgb(ECOLOGY_THEME.categoryEvent) },
 };
 export const relationColor = (
   type: string,
@@ -24,7 +25,7 @@ export const relationColor = (
   )?.colorDomain;
   if (domain && relationDomainInfo[domain])
     return relationDomainInfo[domain].color;
-  return [126, 160, 207];
+  return rgb(ECOLOGY_THEME.factPoint);
 };
 export const relationTypeInfo = (type: string, catalog?: RelationTypeCatalog) =>
   catalog?.types.find((item) => item.id === type);

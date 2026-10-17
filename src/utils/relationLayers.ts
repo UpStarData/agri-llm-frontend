@@ -3,6 +3,7 @@ import type { Layer } from "@deck.gl/core";
 import type { ColorTheme, Entity, Relation, Position, Selection } from "@/types";
 import { relationColor, relationTypeInfo } from "./relationFilters";
 import { flattenWorldPosition, MAP_POINT_LINE_COLOR, MAP_POINT_RADIUS } from "./map";
+import { ECOLOGY_THEME, rgb, type RGB } from "./ecologyTheme";
 import type { RelationTypeCatalog } from "@/api/relation";
 
 interface IOptions {
@@ -23,6 +24,7 @@ interface IOptions {
   project?: (position: number[]) => number[];
   select: (selection: Selection) => void;
   relationTypes?: RelationTypeCatalog;
+  categoryColors?: Map<string, RGB>;
 }
 const radians = Math.PI / 180;
 const validPosition = (p: Position | null): p is Position =>
@@ -239,14 +241,16 @@ export const createRelationLayers = (options: IOptions): Layer[] => {
           next.every((node, index) => node === previous[index]),
         );
       },
-      updateTriggers: { getPosition: flatWorld },
+      updateTriggers: { getPosition: flatWorld, getFillColor: options.categoryColors },
       pickable: true,
       getPosition: (e) => transform(e.position!),
       // 所有本体点同一尺寸：选中、枢纽、主题都不改变半径。
       getRadius: MAP_POINT_RADIUS,
       radiusUnits: "pixels",
       radiusScale: options.pointScale ?? 1,
-      getFillColor: [255, 255, 255, 255],
+      getFillColor: (entity) => [
+        ...(options.categoryColors?.get(entity.type) ?? rgb(ECOLOGY_THEME.factPoint)), 255,
+      ],
       stroked: true,
       getLineColor: MAP_POINT_LINE_COLOR,
       lineWidthUnits: "pixels",

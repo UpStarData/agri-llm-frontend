@@ -273,11 +273,13 @@ export function getRegionView(
 }
 
 /**
- * 地图点位半径（px），事实点与关联层本体点共用同一个值。
+ * 关联层本体点半径（px）。
  * 同一区域层级下所有点尺寸一致（选中、枢纽、是否被展开都不改变半径），
  * 跨层级的大小差异只由 radiusScale(getMapPointScale) 提供。
  */
 export const MAP_POINT_RADIUS = 5;
+/** 事实点单独缩小 20%，全球、中国、湖南沿用现有层级比例。 */
+export const FACT_POINT_RADIUS = 4;
 
 /** 区域越聚焦，事实和本体标记越大；球体仍采用全球尺寸。 */
 export function getMapPointScale(level: string, isGlobe = false): number {

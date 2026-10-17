@@ -25,7 +25,7 @@ import GeoPointInfoCard from "../src/components/map/GeoPointInfoCard";
 
 const point: GeoPoint = {
   pointId: "hormuz", name: "霍尔木兹海峡", kind: "risk", geoPoint: [56.5, 26.5],
-  summary: "波斯湾通往印度洋的唯一海上通道。",
+  description: "波斯湾通往印度洋的唯一海上通道。",
 };
 const camera = { longitude: 56.5, latitude: 26.5, zoom: 3 };
 
@@ -57,7 +57,7 @@ describe("叠加图标简要信息", () => {
     expect(card.props.children.props.items).toEqual([
       { key: "name", label: "名称", children: point.name },
       { key: "category", label: "分类", children: "地缘风险区" },
-      { key: "summary", label: "简介", children: point.summary },
+      { key: "description", label: "简介", children: point.description },
     ]);
     expect(card.props.style.top).toBeCloseTo(viewport.project(point.geoPoint)[1] - 18);
     expect(card.props.style.transform).toBe("translate(-50%, -100%)");
@@ -67,7 +67,7 @@ describe("叠加图标简要信息", () => {
 
   it("缺少简介时展示占位文案", () => {
     const viewport = new WebMercatorViewport({ ...camera, width: 1000, height: 700 });
-    const card = GeoPointInfoCard({ point: { ...point, summary: null }, viewport, onClose: vi.fn() })!;
+    const card = GeoPointInfoCard({ point: { ...point, description: null }, viewport, onClose: vi.fn() })!;
     expect(card.props.children.props.items[2].children).toBe("暂无简介");
   });
 

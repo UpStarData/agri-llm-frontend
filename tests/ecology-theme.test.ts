@@ -51,7 +51,7 @@ describe("生态亮色主题集成", () => {
     const old = dark.find((layer) => layer.id === "real-entities")!;
     for (const layer of [node, old]) {
       expect(layer.props.getRadius).toBe(MAP_POINT_RADIUS);
-      expect(layer.props.getFillColor).toEqual([255, 255, 255, 255]);
+      expect((layer.props.getFillColor as (entity: Entity) => number[])(entities[0])).toEqual([...rgb(eco.factPoint), 255]);
       expect(layer.props.getLineColor).toEqual([153, 153, 153, 255]);
       expect(layer.props.getLineWidth).toBe(1);
       expect(layer.props.stroked).toBe(true);
